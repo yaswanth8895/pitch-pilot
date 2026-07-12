@@ -68,14 +68,16 @@ Owns the Next.js dashboard, Convex, Linkup, Hermes, and Cloudflare Pages.
      pricing[], objections[], faq[{question,answer}], benefits[] }`, `history[]`.
    - `leads`: `orgId, name, phone, company, strategy, state, meetingBooked, history[]`.
    - `runs`: `leadId, callId, status, transcript, transcriptProvider, endedReason,
-     summary, outcome`.
+     summary, outcome, recordingId (Convex file storage), recordingUrl`.
 3. Actions: `extractProduct` (Linkup→Hermes), `importLeads` (CSV `name,phone,company`),
    `generateStrategy` (Hermes), `startCall` (→ Worker `/start-call`, set
    `CONTACTING`, create a `run`), `processTranscript` (Hermes classify →
    summary/state/meeting, validate transition, append history).
 4. **Convex HTTP actions** (shared-secret; the seam the voice Worker calls):
-   `GET /voice/context`, `POST /voice/completed`, `POST /voice/failed`. Deploy
-   minimal versions **+ a synthetic seed lead early** — this unblocks voice Stage 1.
+   `GET /voice/context`, `POST /voice/completed`, `POST /voice/failed`, and
+   `POST /voice/recording` (store audio bytes in **Convex file storage**, link to
+   the run). Deploy minimal versions **+ a synthetic seed lead early** — this
+   unblocks voice Stage 1.
 5. Routes (static-export safe): `/`, `/leads`, `/lead?id=<leadId>`; live via
    Convex subscriptions.
 6. Lead state machine (server-validated), seed/reset script, readable error states.
@@ -106,6 +108,8 @@ Twilio number. Full spec: `contracts/voice-api.md`. Build order:
    `post_call_transcription` flatten turns → read `leadId` → POST `/voice/completed`
    `{ leadId, callId, transcript, transcriptProvider:"elevenlabs", endedReason }`;
    on `call_initiation_failure` → POST `/voice/failed`. Return `200` promptly.
+   Then (background) pull the call audio from ElevenLabs and POST it to
+   `/voice/recording` — recording is on by default.
 7. Secrets via `wrangler secret put`; `wrangler deploy`; hand the Worker URL to the
    colleague for `VOICE_SERVICE_URL`.
 
@@ -142,6 +146,7 @@ agent config**, not in any repo. No secrets in Git.
 - [ ] Paste URL → stored product knowledge (summary, features, pricing, objections, FAQ, benefits).
 - [ ] CSV upload → leads + generated strategies on the live dashboard.
 - [ ] One real outbound call → transcript, summary, final state, meeting flag, activity — live.
+- [ ] The call is recorded and the audio is saved to Convex file storage, playable from the run.
 - [ ] Lead state changes only through validated transitions; failures → `FAILED`.
 - [ ] Deployed: UI on Cloudflare Pages, Convex managed, Worker on Cloudflare Workers.
 - [ ] No credentials committed; quality gates pass (`AGENTS.md` command table).

@@ -32,6 +32,7 @@ Owns:
 - Lead strategy generation
 - Lead-state validation
 - Transcript storage and Hermes CRM processing
+- Storing call recordings in Convex file storage and linking them to the run
 - Live activity feed and lead details
 - The Convex endpoints described below
 
@@ -49,6 +50,7 @@ Owns:
 - Passing concise dynamic variables to ElevenLabs
 - Receiving and validating ElevenLabs post-call transcription webhooks
 - Forwarding the final transcript or failure to Convex
+- Pulling the completed call recording from ElevenLabs and forwarding it to Convex
 - Voice deployment and real-call testing
 
 The voice application must not determine the CRM state or meeting status. Convex and Hermes own that decision.
@@ -236,6 +238,39 @@ Successful response:
 
 Convex will mark the lead `FAILED` and append the failure to its history.
 
+### Save a recording
+
+After a completed call, the voice Worker pulls the call audio from ElevenLabs and
+sends the raw bytes to Convex, which stores them in **Convex file storage** and
+links the stored file to the run.
+
+```http
+POST https://<convex-deployment>.convex.site/voice/recording?leadId=<lead-id>&callId=<call-id>
+Content-Type: audio/mpeg
+X-Shared-Secret: <VOICE_SHARED_SECRET>
+
+<binary audio bytes>
+```
+
+Successful response:
+
+```json
+{
+  "accepted": true
+}
+```
+
+Convex responsibilities:
+
+- Validate the shared secret; read `leadId` and `callId` from the query string.
+- Store the audio via `ctx.storage.store(...)`, then save the resulting file id
+  and a playable URL on the run so the dashboard can play the recording back.
+
+Recording is enabled by default (`call_recording_enabled` on the outbound call)
+and requires the legally required disclosure/consent. The Worker's upload is
+best-effort and happens after `/voice/completed`, so a missing or delayed
+recording never blocks the transcript, summary, or lead-state result.
+
 ## ElevenLabs behavior
 
 The Worker should perform this sequence:
@@ -358,6 +393,7 @@ Prepare a short recording of the successful flow as a fallback.
 - [ ] The ElevenLabs webhook reaches the Worker.
 - [ ] The Worker validates the ElevenLabs webhook signature.
 - [ ] The Worker sends the final ElevenLabs transcript to Convex.
+- [ ] The call recording is pulled from ElevenLabs and saved to Convex.
 - [ ] Failures are sent to `/voice/failed` with a readable reason.
 - [ ] No credentials are committed.
 - [ ] The deployed Worker URL and required variable names are documented.
