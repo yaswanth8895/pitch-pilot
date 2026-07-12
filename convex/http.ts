@@ -41,7 +41,7 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     if (!authorized(request)) return json({ error: "Unauthorized" }, 401);
-    let body: { leadId?: unknown; transcript?: unknown };
+    let body: { leadId?: unknown; callId?: unknown; transcript?: unknown };
     try {
       body = (await request.json()) as typeof body;
     } catch {
@@ -56,6 +56,7 @@ http.route({
     }
     const result = await ctx.runMutation(internal.voice.receiveTranscript, {
       leadId: body.leadId,
+      callId: typeof body.callId === "string" ? body.callId : undefined,
       transcript: body.transcript,
     });
     if (!result.accepted) {
@@ -73,17 +74,26 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     if (!authorized(request)) return json({ error: "Unauthorized" }, 401);
-    const body = (await request.json()) as { leadId?: unknown; reason?: unknown };
+    let body: { leadId?: unknown; callId?: unknown; reason?: unknown };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return json({ error: "Invalid JSON" }, 400);
+    }
     if (typeof body.leadId !== "string" || typeof body.reason !== "string") {
       return json({ error: "leadId and reason are required" }, 400);
     }
-    const context = await ctx.runQuery(internal.voice.getContext, { leadId: body.leadId });
-    if (!context) return json({ error: "Lead not found" }, 404);
-    await ctx.runMutation(internal.voice.failCall, {
-      leadId: context.leadId,
+    const result = await ctx.runMutation(internal.voice.receiveFailure, {
+      leadId: body.leadId,
+      callId: typeof body.callId === "string" ? body.callId : undefined,
       reason: body.reason,
     });
-    return json({ accepted: true });
+    return json(
+      result.skipped
+        ? { accepted: true, skipped: true, reason: "lead_deleted" }
+        : { accepted: true },
+      202,
+    );
   }),
 });
 

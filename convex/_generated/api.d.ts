@@ -11,6 +11,7 @@
 import type * as ai from "../ai.js";
 import type * as auth from "../auth.js";
 import type * as authz from "../authz.js";
+import type * as calls from "../calls.js";
 import type * as crm from "../crm.js";
 import type * as demo from "../demo.js";
 import type * as http from "../http.js";
@@ -30,6 +31,7 @@ declare const fullApi: ApiFromModules<{
   ai: typeof ai;
   auth: typeof auth;
   authz: typeof authz;
+  calls: typeof calls;
   crm: typeof crm;
   demo: typeof demo;
   http: typeof http;

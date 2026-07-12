@@ -52,6 +52,9 @@ export const reset = mutation({
     for (const run of await ctx.db.query("runs").collect()) {
       await ctx.db.delete(run._id);
     }
+    for (const call of await ctx.db.query("calls").collect()) {
+      await ctx.db.delete(call._id);
+    }
     for (const lead of await ctx.db.query("leads").collect()) {
       await ctx.db.delete(lead._id);
     }
@@ -111,6 +114,41 @@ export const reset = mutation({
       history: [
         { timestamp: now - 145_000, event: "Lead Created" },
         { timestamp: now - 110_000, event: "Strategy Generated" },
+      ],
+    });
+
+    await ctx.db.insert("calls", {
+      leadId: completedLeadId,
+      externalCallId: "demo-call-1",
+      status: "COMPLETED",
+      startedAt: now - 86_400_000,
+      endedAt: now - 86_340_000,
+      transcript:
+        "Agent: Hi Aarav, how does Northstar handle calls after hours?\nAarav: We miss some calls, but I am heading into a meeting.\nAgent: Understood. May I call tomorrow afternoon?\nAarav: Yes, that works.",
+      summary:
+        "Aarav confirmed that Northstar misses some after-hours calls and asked for a follow-up the next afternoon.",
+      outcome: "INTERESTED",
+      meetingBooked: false,
+      history: [
+        { timestamp: now - 86_400_000, event: "Call Requested" },
+        { timestamp: now - 86_340_000, event: "Lead Updated" },
+      ],
+    });
+    await ctx.db.insert("calls", {
+      leadId: completedLeadId,
+      externalCallId: "demo-call-2",
+      status: "COMPLETED",
+      startedAt: now - 90_000,
+      endedAt: now - 30_000,
+      transcript:
+        "Agent: Hi Aarav, following up on our conversation about missed after-hours calls.\nAarav: Yes, we miss several each week.\nAgent: Would a tailored demo be useful?\nAarav: Yes, let us meet Tuesday at 2 PM.\nAgent: Great, I have noted Tuesday at 2 PM.",
+      summary:
+        "Aarav confirmed missed after-hours calls and agreed to a tailored demo Tuesday at 2 PM.",
+      outcome: "MEETING_BOOKED",
+      meetingBooked: true,
+      history: [
+        { timestamp: now - 90_000, event: "Call Requested" },
+        { timestamp: now - 30_000, event: "Meeting Booked" },
       ],
     });
 

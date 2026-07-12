@@ -11,6 +11,7 @@ import {
   MessageSquareText,
   Phone,
   PhoneCall,
+  History,
   Pencil,
   Save,
   Sparkles,
@@ -30,6 +31,7 @@ function LeadDetails() {
   const router = useRouter();
   const leadId = searchParams.get("id");
   const lead = useQuery(api.leads.getById, leadId ? { leadId } : "skip");
+  const calls = useQuery(api.calls.listByLead, leadId ? { leadId } : "skip");
   const startCall = useAction(api.voice.startCall);
   const updateStrategy = useMutation(api.leads.updateStrategy);
   const deleteLead = useMutation(api.leads.deleteLead);
@@ -117,14 +119,18 @@ function LeadDetails() {
                 : "Open a lead from the dashboard to see its call workspace."}
           </p>
         </div>
-        {lead?.currentState === "READY" && !lead.callStarted && (
+        {lead?.strategy && lead.currentState !== "NEW" && lead.currentState !== "CALLING" && (
           <Button disabled={isStartingCall} onClick={handleStartCall} type="button">
             {isStartingCall ? (
               <LoaderCircle className="size-4 animate-spin" />
             ) : (
               <PhoneCall className="size-4" />
             )}
-            {isStartingCall ? "Starting call" : "Start call"}
+            {isStartingCall
+              ? "Starting call"
+              : calls?.length
+                ? "Start follow-up call"
+                : "Start call"}
           </Button>
         )}
       </div>
@@ -195,6 +201,78 @@ function LeadDetails() {
             ) : (
               <div className="mt-5 whitespace-pre-wrap rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-left text-sm leading-6 text-slate-600">
                 {lead?.strategy ?? "Strategy will appear after the lead is prepared."}
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <History className="size-4 text-slate-400" />
+                Call history
+              </div>
+              <span className="text-xs text-slate-400">
+                {calls?.length ?? 0} {(calls?.length ?? 0) === 1 ? "call" : "calls"}
+              </span>
+            </div>
+            {calls?.length ? (
+              <div className="mt-5 space-y-3">
+                {calls.map((call, index) => {
+                  const turns = parseTranscript(call.transcript ?? "");
+                  return (
+                    <details
+                      className="group rounded-lg border border-slate-200 bg-white"
+                      key={call._id}
+                      open={index === 0}
+                    >
+                      <summary className="cursor-pointer list-none px-4 py-4">
+                        <div className="flex items-center justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-medium text-slate-800">
+                              Call {calls.length - index}
+                            </p>
+                            <p className="mt-1 text-xs text-slate-400">
+                              {new Date(call.startedAt).toLocaleString()}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {call.meetingBooked && <Badge>Meeting booked</Badge>}
+                            <Badge>{call.status.replaceAll("_", " ")}</Badge>
+                          </div>
+                        </div>
+                        {(call.summary || call.failureReason) && (
+                          <p className="mt-3 text-sm leading-6 text-slate-600">
+                            {call.summary ?? call.failureReason}
+                          </p>
+                        )}
+                      </summary>
+                      <div className="border-t border-slate-100 px-4 py-4">
+                        {turns.length ? (
+                          <div className="space-y-3">
+                            {turns.map((turn, turnIndex) => (
+                              <div key={`${call._id}-${turnIndex}`}>
+                                <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                                  {turn.speaker}
+                                </p>
+                                <p className="mt-1 text-sm leading-6 text-slate-700">
+                                  {turn.message}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-slate-500">
+                            Transcript has not arrived yet.
+                          </p>
+                        )}
+                      </div>
+                    </details>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                Each call attempt and its outcome will appear here.
               </div>
             )}
           </Card>

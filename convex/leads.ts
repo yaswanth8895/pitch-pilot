@@ -49,6 +49,11 @@ export const deleteLead = mutation({
       .withIndex("by_lead", (query) => query.eq("leadId", leadId))
       .collect();
     for (const run of runs) await ctx.db.delete(run._id);
+    const calls = await ctx.db
+      .query("calls")
+      .withIndex("by_lead", (query) => query.eq("leadId", leadId))
+      .collect();
+    for (const call of calls) await ctx.db.delete(call._id);
     await ctx.db.delete(leadId);
     return { deleted: true };
   },

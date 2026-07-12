@@ -16,6 +16,14 @@ const historyItem = v.object({
   event: v.string(),
 });
 
+export const callStatus = v.union(
+  v.literal("STARTING"),
+  v.literal("CALLING"),
+  v.literal("PROCESSING"),
+  v.literal("COMPLETED"),
+  v.literal("FAILED"),
+);
+
 const productKnowledge = v.object({
   summary: v.string(),
   features: v.array(v.string()),
@@ -50,6 +58,21 @@ export default defineSchema({
     callStarted: v.boolean(),
     history: v.array(historyItem),
   }).index("by_organization", ["organizationId"]),
+  calls: defineTable({
+    leadId: v.id("leads"),
+    externalCallId: v.optional(v.string()),
+    status: callStatus,
+    startedAt: v.number(),
+    endedAt: v.optional(v.number()),
+    transcript: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    outcome: v.optional(leadState),
+    meetingBooked: v.boolean(),
+    failureReason: v.optional(v.string()),
+    history: v.array(historyItem),
+  })
+    .index("by_lead", ["leadId"])
+    .index("by_external_call", ["externalCallId"]),
   runs: defineTable({
     leadId: v.id("leads"),
     steps: v.array(

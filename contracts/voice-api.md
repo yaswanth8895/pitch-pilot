@@ -2,7 +2,7 @@
 
 This document is the contract between the PitchPilot Agency/UI application and the independently maintained voice application.
 
-The hackathon goal is one reliable outbound call. Keep the voice application intentionally small.
+The hackathon goal is reliable outbound calls with follow-up context. Keep the voice application intentionally small.
 
 ## Agreed stack
 
@@ -150,7 +150,7 @@ Use these status codes:
 - `400`: invalid JSON or missing `leadId`
 - `401`: missing or invalid shared secret
 - `404`: lead not found
-- `409`: lead already called or another call is active
+- `409`: another call is already active for this lead
 - `502`: ElevenLabs or Twilio rejected the request
 
 ### Health check
@@ -206,6 +206,10 @@ Successful response:
 ```
 
 Return `401` for an invalid secret and `404` for an unknown or ineligible lead.
+
+For follow-up calls, Convex automatically appends concise summaries and outcomes from
+earlier completed calls to `strategy`. The voice application does not need another
+endpoint or database. It should pass the returned strategy to the voice agent as usual.
 
 ### Complete a call
 

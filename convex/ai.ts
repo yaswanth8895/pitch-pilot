@@ -210,10 +210,10 @@ Analyze the completed call transcript and return JSON only with exactly this sha
 Use MEETING_BOOKED only when a concrete meeting or follow-up time was agreed. Use INTERESTED for clear positive interest without a booked meeting. Do not invent facts.`;
 
 export const processTranscript = internalAction({
-  args: { leadId: v.id("leads") },
-  handler: async (ctx, { leadId }) => {
+  args: { callRecordId: v.id("calls") },
+  handler: async (ctx, { callRecordId }) => {
     try {
-      const lead = await ctx.runQuery(internal.voice.getTranscriptContext, { leadId });
+      const lead = await ctx.runQuery(internal.voice.getTranscriptContext, { callRecordId });
       const hermesBaseUrl = getRequiredEnvironmentVariable("HERMES_BASE_URL").replace(/\/$/, "");
       const hermesApiKey = getRequiredEnvironmentVariable("HERMES_API_KEY");
       const response = await fetch(`${hermesBaseUrl}/chat/completions`, {
@@ -244,14 +244,17 @@ export const processTranscript = internalAction({
       if (typeof content !== "string") throw new Error("Hermes returned no CRM result.");
       const outcome = parseCrmOutcome(content);
       await ctx.runMutation(internal.voice.applyCrmOutcome, {
-        leadId,
+        callRecordId,
         summary: outcome.summary,
         currentState: outcome.leadState,
         meetingBooked: outcome.meetingBooked,
       });
     } catch (error) {
+      const context = await ctx.runQuery(internal.voice.getCallLeadId, { callRecordId });
+      if (!context) return;
       await ctx.runMutation(internal.voice.failCall, {
-        leadId,
+        leadId: context.leadId,
+        callRecordId,
         reason: error instanceof Error ? error.message : "Transcript processing failed.",
       });
     }
