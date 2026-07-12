@@ -1,16 +1,41 @@
+"use client";
+
 import Link from "next/link";
-import { ArrowUpRight, Clock3, PhoneCall, Users } from "lucide-react";
+import { useQuery } from "convex/react";
+import { ArrowRight, ArrowUpRight, Clock3, PhoneCall, Users } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { api } from "@/convex/_generated/api";
 
-const stats = [
-  { label: "Total leads", value: "0", icon: Users },
-  { label: "Ready to call", value: "0", icon: PhoneCall },
-  { label: "Meetings", value: "0", icon: Clock3 },
-];
+const stateStyles: Record<string, string> = {
+  NEW: "border-slate-200 bg-slate-50 text-slate-600",
+  READY: "border-blue-200 bg-blue-50 text-blue-700",
+  CALLING: "border-amber-200 bg-amber-50 text-amber-700",
+  INTERESTED: "border-violet-200 bg-violet-50 text-violet-700",
+  MEETING_BOOKED: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  NOT_INTERESTED: "border-slate-200 bg-slate-100 text-slate-500",
+  FAILED: "border-red-200 bg-red-50 text-red-700",
+};
 
 export default function LeadsPage() {
+  const leads = useQuery(api.leads.list);
+  const total = leads?.length ?? 0;
+  const ready = leads?.filter((lead) => lead.currentState === "READY").length ?? 0;
+  const meetings = leads?.filter((lead) => lead.meetingBooked).length ?? 0;
+  const activities = (leads ?? [])
+    .flatMap((lead) =>
+      lead.history.map((item) => ({ ...item, leadName: lead.name, leadId: lead._id })),
+    )
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 8);
+
+  const stats = [
+    { label: "Total leads", value: total, icon: Users },
+    { label: "Ready to call", value: ready, icon: PhoneCall },
+    { label: "Meetings", value: meetings, icon: Clock3 },
+  ];
+
   return (
     <div>
       <div className="flex items-end justify-between">
@@ -34,7 +59,9 @@ export default function LeadsPage() {
           <Card className="flex items-center justify-between p-5" key={stat.label}>
             <div>
               <p className="text-sm text-slate-500">{stat.label}</p>
-              <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{stat.value}</p>
+              <p className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">
+                {leads === undefined ? "—" : stat.value}
+              </p>
             </div>
             <span className="flex size-10 items-center justify-center rounded-lg bg-slate-100 text-slate-500">
               <stat.icon className="size-4" />
@@ -48,7 +75,11 @@ export default function LeadsPage() {
           <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
             <div>
               <h2 className="text-sm font-semibold text-slate-900">Campaign leads</h2>
-              <p className="mt-1 text-xs text-slate-500">No leads imported yet</p>
+              <p className="mt-1 text-xs text-slate-500">
+                {leads === undefined
+                  ? "Loading leads…"
+                  : `${total} ${total === 1 ? "lead" : "leads"} in this campaign`}
+              </p>
             </div>
             <Link className="text-sm font-medium text-slate-600 hover:text-slate-950" href="/">
               Import CSV
@@ -62,15 +93,43 @@ export default function LeadsPage() {
             <span>Summary</span>
             <span />
           </div>
-          <div className="flex min-h-72 flex-col items-center justify-center px-6 text-center">
-            <span className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-400">
-              <Users className="size-5" />
-            </span>
-            <p className="mt-4 text-sm font-semibold text-slate-800">Your leads will appear here</p>
-            <p className="mt-1 max-w-xs text-sm leading-6 text-slate-500">
-              Upload a CSV on Setup to begin preparing personalized sales strategies.
-            </p>
-          </div>
+
+          {leads?.map((lead) => (
+            <div
+              className="grid grid-cols-[1.2fr_1fr_0.8fr_0.7fr_1fr_36px] items-center border-b border-slate-100 px-5 py-4 text-sm last:border-b-0"
+              key={lead._id}
+            >
+              <div className="min-w-0">
+                <p className="truncate font-medium text-slate-900">{lead.name}</p>
+                <p className="mt-0.5 truncate text-xs text-slate-500">{lead.company}</p>
+              </div>
+              <span className="truncate text-slate-600">{lead.phone}</span>
+              <Badge className={stateStyles[lead.currentState]}>{lead.currentState}</Badge>
+              <span className="text-slate-600">{lead.meetingBooked ? "Yes" : "No"}</span>
+              <span className="truncate pr-4 text-xs text-slate-500">
+                {lead.summary ?? "No call yet"}
+              </span>
+              <Link
+                aria-label={`View ${lead.name}`}
+                className="flex size-8 items-center justify-center rounded-md text-slate-400 hover:bg-slate-100 hover:text-slate-900"
+                href={`/lead?id=${lead._id}`}
+              >
+                <ArrowRight className="size-4" />
+              </Link>
+            </div>
+          ))}
+
+          {leads?.length === 0 && (
+            <div className="flex min-h-72 flex-col items-center justify-center px-6 text-center">
+              <span className="flex size-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-slate-400">
+                <Users className="size-5" />
+              </span>
+              <p className="mt-4 text-sm font-semibold text-slate-800">Your leads will appear here</p>
+              <p className="mt-1 max-w-xs text-sm leading-6 text-slate-500">
+                Upload a CSV on Setup to begin preparing personalized sales strategies.
+              </p>
+            </div>
+          )}
         </Card>
 
         <Card className="p-5">
@@ -78,13 +137,32 @@ export default function LeadsPage() {
             <h2 className="text-sm font-semibold text-slate-900">Activity</h2>
             <ArrowUpRight className="size-4 text-slate-400" />
           </div>
-          <div className="mt-16 flex flex-col items-center text-center">
-            <span className="size-2 rounded-full bg-slate-300" />
-            <p className="mt-4 text-sm font-medium text-slate-700">Nothing yet</p>
-            <p className="mt-1 text-xs leading-5 text-slate-500">
-              Product, strategy, and call events will stream here.
-            </p>
-          </div>
+          {activities.length > 0 ? (
+            <div className="mt-5 space-y-5">
+              {activities.map((activity) => (
+                <div className="flex gap-3" key={`${activity.leadId}-${activity.timestamp}`}>
+                  <span className="mt-1.5 size-2 shrink-0 rounded-full bg-slate-900" />
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-slate-800">{activity.event}</p>
+                    <p className="mt-0.5 truncate text-xs text-slate-500">
+                      {activity.leadName} · {new Date(activity.timestamp).toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="mt-16 flex flex-col items-center text-center">
+              <span className="size-2 rounded-full bg-slate-300" />
+              <p className="mt-4 text-sm font-medium text-slate-700">Nothing yet</p>
+              <p className="mt-1 text-xs leading-5 text-slate-500">
+                Product, strategy, and call events will stream here.
+              </p>
+            </div>
+          )}
         </Card>
       </div>
     </div>

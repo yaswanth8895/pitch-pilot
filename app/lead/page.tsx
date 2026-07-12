@@ -3,14 +3,17 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useQuery } from "convex/react";
 import { ArrowLeft, FileText, MessageSquareText, Phone } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
+import { api } from "@/convex/_generated/api";
 
 function LeadDetails() {
   const searchParams = useSearchParams();
   const leadId = searchParams.get("id");
+  const lead = useQuery(api.leads.getById, leadId ? { leadId } : "skip");
 
   return (
     <div>
@@ -23,12 +26,16 @@ function LeadDetails() {
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-3xl font-semibold tracking-[-0.03em] text-slate-950">
-              {leadId ? "Lead details" : "Select a lead"}
+              {lead?.name ?? (leadId ? "Lead details" : "Select a lead")}
             </h1>
-            <Badge>NEW</Badge>
+            {lead && <Badge>{lead.currentState}</Badge>}
           </div>
           <p className="mt-2 text-sm text-slate-500">
-            {leadId ? `Lead ID: ${leadId}` : "Open a lead from the dashboard to see its call workspace."}
+            {lead
+              ? lead.company
+              : leadId
+                ? "Loading lead…"
+                : "Open a lead from the dashboard to see its call workspace."}
           </p>
         </div>
       </div>
@@ -41,7 +48,7 @@ function LeadDetails() {
               Call strategy
             </div>
             <div className="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-500">
-              Strategy will appear after the lead is prepared.
+              {lead?.strategy ?? "Strategy will appear after the lead is prepared."}
             </div>
           </Card>
 
@@ -51,7 +58,7 @@ function LeadDetails() {
               Transcript
             </div>
             <div className="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-500">
-              The completed call transcript will appear here automatically.
+              {lead?.transcript ?? "The completed call transcript will appear here automatically."}
             </div>
           </Card>
         </div>
@@ -62,26 +69,45 @@ function LeadDetails() {
             <dl className="mt-5 space-y-4 text-sm">
               <div>
                 <dt className="text-xs text-slate-500">Company</dt>
-                <dd className="mt-1 font-medium text-slate-800">—</dd>
+                <dd className="mt-1 font-medium text-slate-800">{lead?.company ?? "—"}</dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Phone</dt>
                 <dd className="mt-1 flex items-center gap-2 font-medium text-slate-800">
-                  <Phone className="size-3.5 text-slate-400" />—
+                  <Phone className="size-3.5 text-slate-400" />
+                  {lead?.phone ?? "—"}
                 </dd>
               </div>
               <div>
                 <dt className="text-xs text-slate-500">Meeting</dt>
-                <dd className="mt-1 font-medium text-slate-800">Not booked</dd>
+                <dd className="mt-1 font-medium text-slate-800">
+                  {lead?.meetingBooked ? "Booked" : "Not booked"}
+                </dd>
               </div>
             </dl>
           </Card>
 
           <Card className="p-5">
             <h2 className="text-sm font-semibold text-slate-900">Timeline</h2>
-            <div className="mt-8 text-center text-xs leading-5 text-slate-500">
-              Activity will appear as this lead moves through the campaign.
-            </div>
+            {lead?.history.length ? (
+              <div className="mt-5 space-y-4">
+                {[...lead.history].reverse().map((item) => (
+                  <div className="flex gap-3" key={`${item.timestamp}-${item.event}`}>
+                    <span className="mt-1 size-2 shrink-0 rounded-full bg-slate-900" />
+                    <div>
+                      <p className="text-xs font-medium text-slate-700">{item.event}</p>
+                      <p className="mt-0.5 text-[11px] text-slate-400">
+                        {new Date(item.timestamp).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="mt-8 text-center text-xs leading-5 text-slate-500">
+                Activity will appear as this lead moves through the campaign.
+              </div>
+            )}
           </Card>
         </div>
       </div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAction, useQuery } from "convex/react";
+import { useRouter } from "next/navigation";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
   ArrowRight,
   Check,
@@ -15,6 +16,7 @@ import {
 import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { parseLeadCsv, type LeadCsvRow } from "@/lib/csv";
 
 const steps = [
   { number: "01", label: "Product", description: "Teach PitchPilot what you sell" },
@@ -25,10 +27,15 @@ const steps = [
 export default function SetupPage() {
   const [landingPage, setLandingPage] = useState("");
   const [fileName, setFileName] = useState("");
+  const [leadRows, setLeadRows] = useState<LeadCsvRow[]>([]);
+  const [csvError, setCsvError] = useState("");
+  const [isImporting, setIsImporting] = useState(false);
   const [isExtracting, setIsExtracting] = useState(false);
   const [extractionError, setExtractionError] = useState("");
+  const router = useRouter();
   const organization = useQuery(api.organizations.getCurrent);
   const extractProductKnowledge = useAction(api.ai.extractProductKnowledge);
+  const importLeads = useMutation(api.leads.importLeads);
 
   const handleExtraction = async () => {
     setExtractionError("");
@@ -41,6 +48,32 @@ export default function SetupPage() {
       );
     } finally {
       setIsExtracting(false);
+    }
+  };
+
+  const handleFileSelection = async (file?: File) => {
+    setCsvError("");
+    setLeadRows([]);
+    setFileName(file?.name ?? "");
+    if (!file) return;
+
+    try {
+      setLeadRows(await parseLeadCsv(file));
+    } catch (error) {
+      setCsvError(error instanceof Error ? error.message : "CSV could not be read.");
+    }
+  };
+
+  const handleImport = async () => {
+    setCsvError("");
+    setIsImporting(true);
+    try {
+      await importLeads({ leads: leadRows });
+      router.push("/leads");
+    } catch (error) {
+      setCsvError(error instanceof Error ? error.message : "Lead import failed.");
+    } finally {
+      setIsImporting(false);
     }
   };
 
@@ -171,28 +204,70 @@ export default function SetupPage() {
               <input
                 accept=".csv,text/csv"
                 className="sr-only"
-                onChange={(event) => setFileName(event.target.files?.[0]?.name ?? "")}
+                onChange={(event) => handleFileSelection(event.target.files?.[0])}
                 type="file"
               />
             </label>
+            {csvError && (
+              <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {csvError}
+              </p>
+            )}
+            {leadRows.length > 0 && (
+              <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
+                <div className="grid grid-cols-[1fr_1fr_1fr] bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                  <span>Name</span>
+                  <span>Phone</span>
+                  <span>Company</span>
+                </div>
+                {leadRows.slice(0, 4).map((lead, index) => (
+                  <div
+                    className="grid grid-cols-[1fr_1fr_1fr] gap-2 border-t border-slate-100 px-3 py-2 text-xs text-slate-700"
+                    key={`${lead.phone}-${index}`}
+                  >
+                    <span className="truncate">{lead.name}</span>
+                    <span className="truncate">{lead.phone}</span>
+                    <span className="truncate">{lead.company}</span>
+                  </div>
+                ))}
+                {leadRows.length > 4 && (
+                  <p className="border-t border-slate-100 px-3 py-2 text-center text-[11px] text-slate-500">
+                    +{leadRows.length - 4} more leads
+                  </p>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
             <div className="flex items-center justify-between text-sm">
               <span className="font-medium text-slate-700">Ready to launch</span>
-              <span className="text-xs text-slate-500">0 leads prepared</span>
+              <span className="text-xs text-slate-500">
+                {leadRows.length} {leadRows.length === 1 ? "lead" : "leads"} validated
+              </span>
             </div>
             <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-slate-200">
-              <div className="h-full w-0 rounded-full bg-slate-900" />
+              <div
+                className="h-full rounded-full bg-slate-900 transition-[width]"
+                style={{ width: leadRows.length > 0 ? "66%" : "0%" }}
+              />
             </div>
           </div>
 
           <Button
             className="w-full"
-            disabled={!organization?.productKnowledge || !fileName}
+            disabled={!organization?.productKnowledge || leadRows.length === 0 || isImporting}
+            onClick={handleImport}
+            type="button"
           >
-            Start campaign
-            <ArrowRight className="size-4" />
+            {isImporting ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <ArrowRight className="size-4" />
+            )}
+            {isImporting
+              ? "Importing leads"
+              : `Import ${leadRows.length || ""} ${leadRows.length === 1 ? "lead" : "leads"}`}
           </Button>
         </div>
       </Card>
