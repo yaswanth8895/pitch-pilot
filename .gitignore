@@ -1,0 +1,45 @@
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+
+# macOS and editors
+.DS_Store
+.idea/
+.vscode/*.log
+*.swp
+*.swo
+
+# Hermes local output
+.hermes/plans/
+.hermes/checkpoints/
+
+# JavaScript / TypeScript
+node_modules/
+.next/
+dist/
+build/
+coverage/
+.turbo/
+.vite/
+*.tsbuildinfo
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+*.egg-info/
+
+# General output
+.cache/
+tmp/
+temp/
+logs/
+*.log
