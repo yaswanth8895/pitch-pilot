@@ -9,11 +9,13 @@ import { ArrowLeft, FileText, MessageSquareText, Phone, Sparkles } from "lucide-
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { api } from "@/convex/_generated/api";
+import { parseTranscript } from "@/lib/transcript";
 
 function LeadDetails() {
   const searchParams = useSearchParams();
   const leadId = searchParams.get("id");
   const lead = useQuery(api.leads.getById, leadId ? { leadId } : "skip");
+  const transcriptTurns = parseTranscript(lead?.transcript ?? "");
 
   return (
     <div>
@@ -67,9 +69,38 @@ function LeadDetails() {
               <MessageSquareText className="size-4 text-slate-400" />
               Transcript
             </div>
-            <div className="mt-5 whitespace-pre-wrap rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-left text-sm leading-6 text-slate-600">
-              {lead?.transcript ?? "The completed call transcript will appear here automatically."}
-            </div>
+            {transcriptTurns.length > 0 ? (
+              <div className="mt-5 space-y-4 rounded-lg border border-slate-200 bg-slate-50/70 p-5">
+                {transcriptTurns.map((turn, index) => {
+                  const isAgent = turn.speaker.toLowerCase() === "agent";
+                  return (
+                    <div
+                      className={`flex ${isAgent ? "justify-start" : "justify-end"}`}
+                      key={`${turn.speaker}-${index}`}
+                    >
+                      <div className={`max-w-[82%] ${isAgent ? "text-left" : "text-right"}`}>
+                        <p className="mb-1.5 text-[11px] font-semibold uppercase tracking-wide text-slate-400">
+                          {turn.speaker}
+                        </p>
+                        <p
+                          className={`inline-block rounded-2xl px-4 py-3 text-sm leading-6 ${
+                            isAgent
+                              ? "rounded-tl-sm border border-slate-200 bg-white text-slate-700"
+                              : "rounded-tr-sm bg-slate-900 text-left text-white"
+                          }`}
+                        >
+                          {turn.message}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-500">
+                The completed call transcript will appear here automatically.
+              </div>
+            )}
           </Card>
         </div>
 
