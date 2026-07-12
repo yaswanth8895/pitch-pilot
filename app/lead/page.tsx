@@ -4,7 +4,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
-import { ArrowLeft, FileText, MessageSquareText, Phone } from "lucide-react";
+import { ArrowLeft, FileText, MessageSquareText, Phone, Sparkles } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
@@ -28,7 +28,7 @@ function LeadDetails() {
             <h1 className="text-3xl font-semibold tracking-[-0.03em] text-slate-950">
               {lead?.name ?? (leadId ? "Lead details" : "Select a lead")}
             </h1>
-            {lead && <Badge>{lead.currentState}</Badge>}
+            {lead && <Badge>{lead.currentState.replaceAll("_", " ")}</Badge>}
           </div>
           <p className="mt-2 text-sm text-slate-500">
             {lead
@@ -42,6 +42,16 @@ function LeadDetails() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
+          {lead?.summary && (
+            <Card className="border-emerald-200 bg-emerald-50/40 p-6">
+              <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+                <Sparkles className="size-4" />
+                Call summary
+              </div>
+              <p className="mt-4 text-sm leading-6 text-emerald-900/80">{lead.summary}</p>
+            </Card>
+          )}
+
           <Card className="p-6">
             <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
               <FileText className="size-4 text-slate-400" />
@@ -57,7 +67,7 @@ function LeadDetails() {
               <MessageSquareText className="size-4 text-slate-400" />
               Transcript
             </div>
-            <div className="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-500">
+            <div className="mt-5 whitespace-pre-wrap rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-left text-sm leading-6 text-slate-600">
               {lead?.transcript ?? "The completed call transcript will appear here automatically."}
             </div>
           </Card>

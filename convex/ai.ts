@@ -1,7 +1,8 @@
 import { v } from "convex/values";
 
 import { internal } from "./_generated/api";
-import { action } from "./_generated/server";
+import { action, internalAction } from "./_generated/server";
+import { parseCrmOutcome } from "./crm";
 import { parseProductKnowledge } from "./productKnowledge";
 import { cleanStrategy } from "./strategy";
 
@@ -193,5 +194,63 @@ export const generateStrategies = action({
     }
 
     return { ready, failed };
+  },
+});
+
+const CRM_PROMPT = `You are the CRM Agent for an outbound sales team.
+Analyze the completed call transcript and return JSON only with exactly this shape:
+{
+  "summary": "Two or three factual sentences grounded in the transcript",
+  "leadState": "INTERESTED | MEETING_BOOKED | NOT_INTERESTED | FAILED",
+  "meetingBooked": false
+}
+Use MEETING_BOOKED only when a concrete meeting or follow-up time was agreed. Use INTERESTED for clear positive interest without a booked meeting. Do not invent facts.`;
+
+export const processTranscript = internalAction({
+  args: { leadId: v.id("leads") },
+  handler: async (ctx, { leadId }) => {
+    try {
+      const lead = await ctx.runQuery(internal.voice.getTranscriptContext, { leadId });
+      const hermesBaseUrl = getRequiredEnvironmentVariable("HERMES_BASE_URL").replace(/\/$/, "");
+      const hermesApiKey = getRequiredEnvironmentVariable("HERMES_API_KEY");
+      const response = await fetch(`${hermesBaseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${hermesApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "hermes-agent",
+          messages: [
+            { role: "system", content: CRM_PROMPT },
+            {
+              role: "user",
+              content: `Lead: ${lead.name}\nCompany: ${lead.company}\n\nTranscript:\n${lead.transcript}`,
+            },
+          ],
+          stream: false,
+        }),
+        signal: AbortSignal.timeout(90_000),
+      });
+      if (!response.ok) throw new Error(`Hermes returned ${response.status}.`);
+
+      const result = (await response.json()) as {
+        choices?: Array<{ message?: { content?: unknown } }>;
+      };
+      const content = result.choices?.[0]?.message?.content;
+      if (typeof content !== "string") throw new Error("Hermes returned no CRM result.");
+      const outcome = parseCrmOutcome(content);
+      await ctx.runMutation(internal.voice.applyCrmOutcome, {
+        leadId,
+        summary: outcome.summary,
+        currentState: outcome.leadState,
+        meetingBooked: outcome.meetingBooked,
+      });
+    } catch (error) {
+      await ctx.runMutation(internal.voice.failCall, {
+        leadId,
+        reason: error instanceof Error ? error.message : "Transcript processing failed.",
+      });
+    }
   },
 });
