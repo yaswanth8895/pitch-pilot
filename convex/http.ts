@@ -59,9 +59,10 @@ http.route({
       transcript: body.transcript,
     });
     if (!result.accepted) {
-      return result.reason === "not_found"
-        ? json({ error: "Lead not found" }, 404)
-        : json({ error: "Call has not started for this lead" }, 409);
+      if (result.reason === "not_found") {
+        return json({ accepted: true, skipped: true, reason: "lead_deleted" }, 202);
+      }
+      return json({ error: "Call has not started for this lead" }, 409);
     }
     return json({ accepted: true, duplicate: result.duplicate }, 202);
   }),

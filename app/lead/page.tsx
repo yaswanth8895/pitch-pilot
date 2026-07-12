@@ -290,7 +290,7 @@ function LeadDetails() {
             <Card className="border-red-100 p-5">
               <h2 className="text-sm font-semibold text-slate-900">Lead controls</h2>
               <p className="mt-2 text-xs leading-5 text-slate-500">
-                Delete this lead and its call data. This also releases a stuck calling slot.
+                Delete this lead and its call data.
               </p>
               <div className="mt-4 flex items-center gap-2">
                 <Button
