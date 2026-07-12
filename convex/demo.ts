@@ -37,7 +37,11 @@ const productKnowledge = {
 export const reset = mutation({
   args: {
     secret: v.string(),
-    mode: v.union(v.literal("clean"), v.literal("showcase")),
+    mode: v.union(
+      v.literal("leads"),
+      v.literal("clean"),
+      v.literal("showcase"),
+    ),
   },
   handler: async (ctx, { secret, mode }) => {
     const expected = process.env.DEMO_RESET_SECRET;
@@ -51,6 +55,12 @@ export const reset = mutation({
     for (const lead of await ctx.db.query("leads").collect()) {
       await ctx.db.delete(lead._id);
     }
+
+    if (mode === "leads") {
+      const organizations = await ctx.db.query("organizations").collect();
+      return { mode, organizations: organizations.length, leads: 0 };
+    }
+
     for (const organization of await ctx.db.query("organizations").collect()) {
       await ctx.db.delete(organization._id);
     }
