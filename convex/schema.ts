@@ -50,6 +50,16 @@ export default defineSchema({
     name: v.string(),
     phone: v.string(),
     company: v.string(),
+    leadContext: v.optional(v.string()),
+    enrichmentStatus: v.optional(
+      v.union(
+        v.literal("PENDING"),
+        v.literal("PROVIDED"),
+        v.literal("READY"),
+        v.literal("FAILED"),
+      ),
+    ),
+    enrichmentSources: v.optional(v.array(v.string())),
     strategy: v.optional(v.string()),
     currentState: leadState,
     transcript: v.optional(v.string()),

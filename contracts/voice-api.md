@@ -207,9 +207,10 @@ Successful response:
 
 Return `401` for an invalid secret and `404` for an unknown or ineligible lead.
 
-For follow-up calls, Convex automatically appends concise summaries and outcomes from
-earlier completed calls to `strategy`. The voice application does not need another
-endpoint or database. It should pass the returned strategy to the voice agent as usual.
+Convex automatically appends the editable lead context plus concise summaries and
+outcomes from earlier completed calls to `strategy`. The voice application does not
+need another endpoint or database. It should pass the returned strategy to the voice
+agent as usual.
 
 ### Complete a call
 

@@ -207,7 +207,7 @@ export default function SetupPage() {
                     {fileName || "Choose a CSV file"}
                   </span>
                   <span className="mt-0.5 block text-xs text-slate-500">
-                    Required columns: name, phone, company
+                    Required: name, phone, company · Optional: lead_context
                   </span>
                 </span>
               </span>
@@ -226,19 +226,23 @@ export default function SetupPage() {
             )}
             {leadRows.length > 0 && (
               <div className="mt-3 overflow-hidden rounded-lg border border-slate-200">
-                <div className="grid grid-cols-[1fr_1fr_1fr] bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+                <div className="grid grid-cols-[0.8fr_0.8fr_0.8fr_1.2fr] gap-2 bg-slate-50 px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-slate-500">
                   <span>Name</span>
                   <span>Phone</span>
                   <span>Company</span>
+                  <span>Lead context</span>
                 </div>
                 {leadRows.slice(0, 4).map((lead, index) => (
                   <div
-                    className="grid grid-cols-[1fr_1fr_1fr] gap-2 border-t border-slate-100 px-3 py-2 text-xs text-slate-700"
+                    className="grid grid-cols-[0.8fr_0.8fr_0.8fr_1.2fr] gap-2 border-t border-slate-100 px-3 py-2 text-xs text-slate-700"
                     key={`${lead.phone}-${index}`}
                   >
                     <span className="truncate">{lead.name}</span>
                     <span className="truncate">{lead.phone}</span>
                     <span className="truncate">{lead.company}</span>
+                    <span className="truncate text-slate-500">
+                      {lead.leadContext || "Will be enriched automatically"}
+                    </span>
                   </div>
                 ))}
                 {leadRows.length > 4 && (

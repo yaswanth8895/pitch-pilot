@@ -119,7 +119,7 @@ export const extractProductKnowledge = action({
 });
 
 const STRATEGY_PROMPT = `You are the Strategy Agent for an outbound sales team.
-Create a concise, practical call strategy using only the supplied product knowledge and lead information.
+Create a concise, practical call strategy using only the supplied product knowledge, lead information, and public lead context.
 Return readable Markdown with exactly these sections:
 ## Why this lead
 ## Opening
@@ -129,6 +129,43 @@ Return readable Markdown with exactly these sections:
 ## Call goal
 
 Personalize the strategy for the lead's company without inventing private facts. Keep the entire strategy under 450 words.`;
+
+async function enrichLead(name: string, company: string, linkupApiKey: string) {
+  const response = await fetch("https://api.linkup.so/v1/search", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${linkupApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      q: `Research the public professional profile of ${name} at ${company}. Find their likely role, professional background, public social profiles, company priorities, and recent relevant company news. Only return facts supported by public sources. Do not infer sensitive personal information.`,
+      depth: "standard",
+      outputType: "searchResults",
+      maxResults: 5,
+    }),
+    signal: AbortSignal.timeout(30_000),
+  });
+  if (!response.ok) throw new Error(`Linkup returned ${response.status}.`);
+  const result = (await response.json()) as {
+    results?: Array<{ name?: unknown; url?: unknown; content?: unknown }>;
+  };
+  const sources = (result.results ?? []).filter(
+    (item): item is { name: string; url: string; content: string } =>
+      typeof item.name === "string" &&
+      typeof item.url === "string" &&
+      typeof item.content === "string" &&
+      Boolean(item.content.trim()) &&
+      (item.url.startsWith("https://") || item.url.startsWith("http://")),
+  );
+  if (sources.length === 0) throw new Error("No public lead context found.");
+  return {
+    context: sources
+      .map((item) => `- ${item.name}: ${item.content.trim()} (${item.url})`)
+      .join("\n")
+      .slice(0, 10_000),
+    sources: sources.map((item) => item.url),
+  };
+}
 
 export const generateStrategies = action({
   args: {},
@@ -143,12 +180,27 @@ export const generateStrategies = action({
 
     const hermesBaseUrl = getRequiredEnvironmentVariable("HERMES_BASE_URL").replace(/\/$/, "");
     const hermesApiKey = getRequiredEnvironmentVariable("HERMES_API_KEY");
+    const linkupApiKey = getRequiredEnvironmentVariable("LINKUP_API_KEY");
     let ready = 0;
     let failed = 0;
 
     for (const lead of leads) {
       const startedAt = Date.now();
       try {
+        let leadContext = lead.leadContext;
+        if (!leadContext) {
+          try {
+            const enrichment = await enrichLead(lead.name, lead.company, linkupApiKey);
+            leadContext = enrichment.context;
+            await ctx.runMutation(internal.leads.saveEnrichment, {
+              leadId: lead._id,
+              leadContext,
+              sources: enrichment.sources,
+            });
+          } catch {
+            await ctx.runMutation(internal.leads.failEnrichment, { leadId: lead._id });
+          }
+        }
         const response = await fetch(`${hermesBaseUrl}/chat/completions`, {
           method: "POST",
           headers: {
@@ -161,7 +213,7 @@ export const generateStrategies = action({
               { role: "system", content: STRATEGY_PROMPT },
               {
                 role: "user",
-                content: `Product knowledge:\n${JSON.stringify(productKnowledge)}\n\nLead:\n${JSON.stringify({ name: lead.name, phone: lead.phone, company: lead.company })}`,
+                content: `Product knowledge:\n${JSON.stringify(productKnowledge)}\n\nLead:\n${JSON.stringify({ name: lead.name, phone: lead.phone, company: lead.company })}\n\nPublic lead context:\n${leadContext || "No verified public context was found. Do not invent details."}`,
               },
             ],
             stream: false,

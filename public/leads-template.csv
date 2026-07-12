@@ -1,2 +1,3 @@
-name,phone,company
-Jane Doe,+15551234567,Acme Dental
+name,phone,company,lead_context
+Jane Doe,+15551234567,Acme Dental,"VP Sales; focused on expanding the healthcare customer segment"
+John Smith,+15557654321,Northstar Labs,

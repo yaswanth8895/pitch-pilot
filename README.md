@@ -1,6 +1,6 @@
 # PitchPilot
 
-PitchPilot is a hackathon-scale AI outbound sales agency. A user supplies a product landing page and a CSV of leads; the system extracts product knowledge, prepares personalized strategies, triggers one outbound call at a time, and displays the transcript and sales outcome on a live dashboard.
+PitchPilot is a hackathon-scale AI outbound sales agency. A user supplies a product landing page and a CSV of leads; the system extracts product knowledge, enriches blank lead profiles from public web sources, prepares personalized strategies, triggers outbound calls, and displays every transcript and sales outcome on a live dashboard.
 
 ## Architecture
 
@@ -26,7 +26,11 @@ The MVP intentionally excludes authentication, multiple campaigns, CRM integrati
 
 - `/` — landing-page input, CSV upload, and campaign start
 - `/leads` — live leads dashboard and activity feed
-- `/lead?id=<leadId>` — strategy, transcript, summary, state, and history
+- `/lead?id=<leadId>` — editable lead context, strategy, call history, transcripts, summary, and state
+
+CSV columns are `name`, `phone`, `company`, and optional `lead_context`. When
+`lead_context` is blank, Linkup researches public professional profiles, social
+pages, company priorities, and recent relevant news while the lead is prepared.
 
 ## Local development
 

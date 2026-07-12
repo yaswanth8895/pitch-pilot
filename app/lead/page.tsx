@@ -16,6 +16,7 @@ import {
   Save,
   Sparkles,
   Trash2,
+  UserSearch,
   X,
 } from "lucide-react";
 
@@ -34,12 +35,16 @@ function LeadDetails() {
   const calls = useQuery(api.calls.listByLead, leadId ? { leadId } : "skip");
   const startCall = useAction(api.voice.startCall);
   const updateStrategy = useMutation(api.leads.updateStrategy);
+  const updateLeadContext = useMutation(api.leads.updateLeadContext);
   const deleteLead = useMutation(api.leads.deleteLead);
   const [isStartingCall, setIsStartingCall] = useState(false);
   const [callMessage, setCallMessage] = useState("");
   const [isEditingStrategy, setIsEditingStrategy] = useState(false);
   const [strategyDraft, setStrategyDraft] = useState("");
   const [isSavingStrategy, setIsSavingStrategy] = useState(false);
+  const [isEditingContext, setIsEditingContext] = useState(false);
+  const [contextDraft, setContextDraft] = useState("");
+  const [isSavingContext, setIsSavingContext] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const transcriptTurns = parseTranscript(lead?.transcript ?? "");
@@ -93,6 +98,21 @@ function LeadDetails() {
       router.push("/leads");
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleSaveContext = async () => {
+    if (!lead) return;
+    setIsSavingContext(true);
+    setCallMessage("");
+    try {
+      await updateLeadContext({ leadId: lead._id, leadContext: contextDraft });
+      setIsEditingContext(false);
+      setCallMessage("Lead context updated. The next call will use it automatically.");
+    } catch (error) {
+      setCallMessage(error instanceof Error ? error.message : "Lead context could not be saved.");
+    } finally {
+      setIsSavingContext(false);
     }
   };
 
@@ -152,6 +172,67 @@ function LeadDetails() {
               <p className="mt-4 text-sm leading-6 text-emerald-900/80">{lead.summary}</p>
             </Card>
           )}
+
+          <Card className="p-6">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <UserSearch className="size-4 text-slate-400" />
+                Lead context
+                {lead?.enrichmentStatus && <Badge>{lead.enrichmentStatus}</Badge>}
+              </div>
+              {lead && !isEditingContext && (
+                <Button
+                  onClick={() => {
+                    setContextDraft(lead.leadContext ?? "");
+                    setIsEditingContext(true);
+                  }}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  <Pencil className="size-3.5" />
+                  {lead.leadContext ? "Edit" : "Add context"}
+                </Button>
+              )}
+            </div>
+            {isEditingContext ? (
+              <div className="mt-5">
+                <textarea
+                  className="min-h-48 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  onChange={(event) => setContextDraft(event.target.value)}
+                  value={contextDraft}
+                />
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button onClick={() => setIsEditingContext(false)} size="sm" type="button" variant="outline">
+                    <X className="size-3.5" /> Cancel
+                  </Button>
+                  <Button disabled={!contextDraft.trim() || isSavingContext} onClick={handleSaveContext} size="sm" type="button">
+                    {isSavingContext ? <LoaderCircle className="size-3.5 animate-spin" /> : <Save className="size-3.5" />}
+                    {isSavingContext ? "Saving" : "Save context"}
+                  </Button>
+                </div>
+              </div>
+            ) : lead?.leadContext ? (
+              <div className="mt-5 whitespace-pre-wrap rounded-lg border border-slate-200 bg-slate-50 px-5 py-5 text-sm leading-6 text-slate-600">
+                {lead.leadContext}
+              </div>
+            ) : (
+              <div className="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-500">
+                {lead?.enrichmentStatus === "FAILED"
+                  ? "No verified public profile was found. Add context in the CSV or re-import the lead."
+                  : "Public professional and company context will be researched when leads are prepared."}
+              </div>
+            )}
+            {lead?.enrichmentSources?.length ? (
+              <div className="mt-4 flex flex-wrap gap-2">
+                {lead.enrichmentSources.map((source, index) => (
+                  <a className="text-xs font-medium text-slate-500 underline decoration-slate-300 underline-offset-2 hover:text-slate-900" href={source} key={source} rel="noreferrer" target="_blank">
+                    Source {index + 1}
+                  </a>
+                ))}
+              </div>
+            ) : null}
+          </Card>
 
           <Card className="p-6">
             <div className="flex items-center justify-between gap-3">

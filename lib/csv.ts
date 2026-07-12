@@ -4,6 +4,7 @@ export type LeadCsvRow = {
   name: string;
   phone: string;
   company: string;
+  leadContext: string;
 };
 
 const requiredColumns = ["name", "phone", "company"] as const;
@@ -33,6 +34,7 @@ export function parseLeadCsvText(content: string): LeadCsvRow[] {
     name: row.name?.trim() ?? "",
     phone: row.phone?.trim() ?? "",
     company: row.company?.trim() ?? "",
+    leadContext: row.lead_context?.trim() ?? row.summary?.trim() ?? "",
   }));
 
   if (rows.length === 0) {

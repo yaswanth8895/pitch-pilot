@@ -37,6 +37,23 @@ export const updateStrategy = mutation({
   },
 });
 
+export const updateLeadContext = mutation({
+  args: { leadId: v.id("leads"), leadContext: v.string() },
+  handler: async (ctx, { leadId, leadContext }) => {
+    await requireUser(ctx);
+    const lead = await ctx.db.get(leadId);
+    if (!lead) throw new ConvexError("Lead not found.");
+    const value = leadContext.trim();
+    if (!value) throw new ConvexError("Lead context cannot be empty.");
+    if (value.length > 12_000) throw new ConvexError("Lead context is too long.");
+    await ctx.db.patch(leadId, {
+      leadContext: value,
+      enrichmentStatus: "PROVIDED",
+      history: [...lead.history, { timestamp: Date.now(), event: "Lead Context Updated" }],
+    });
+  },
+});
+
 export const deleteLead = mutation({
   args: { leadId: v.id("leads") },
   handler: async (ctx, { leadId }) => {
@@ -66,6 +83,7 @@ export const importLeads = mutation({
         name: v.string(),
         phone: v.string(),
         company: v.string(),
+        leadContext: v.string(),
       }),
     ),
   },
@@ -97,6 +115,9 @@ export const importLeads = mutation({
         name: lead.name.trim(),
         phone: lead.phone.trim(),
         company: lead.company.trim(),
+        leadContext: lead.leadContext.trim() || undefined,
+        enrichmentStatus: lead.leadContext.trim() ? "PROVIDED" : "PENDING",
+        enrichmentSources: [],
         currentState: "NEW",
         meetingBooked: false,
         callStarted: false,
@@ -149,6 +170,36 @@ export const saveStrategy = internalMutation({
       steps: [{ name: "Strategy Generated", status: "completed", latency, cost: 0 }],
       latency,
       cost: 0,
+    });
+  },
+});
+
+export const saveEnrichment = internalMutation({
+  args: {
+    leadId: v.id("leads"),
+    leadContext: v.string(),
+    sources: v.array(v.string()),
+  },
+  handler: async (ctx, { leadId, leadContext, sources }) => {
+    const lead = await ctx.db.get(leadId);
+    if (!lead) return;
+    await ctx.db.patch(leadId, {
+      leadContext,
+      enrichmentStatus: "READY",
+      enrichmentSources: sources,
+      history: [...lead.history, { timestamp: Date.now(), event: "Lead Enriched" }],
+    });
+  },
+});
+
+export const failEnrichment = internalMutation({
+  args: { leadId: v.id("leads") },
+  handler: async (ctx, { leadId }) => {
+    const lead = await ctx.db.get(leadId);
+    if (!lead) return;
+    await ctx.db.patch(leadId, {
+      enrichmentStatus: "FAILED",
+      history: [...lead.history, { timestamp: Date.now(), event: "Lead Enrichment Failed" }],
     });
   },
 });

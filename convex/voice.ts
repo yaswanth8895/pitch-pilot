@@ -45,7 +45,11 @@ export const getContext = internalQuery({
       name: lead.name,
       phone: lead.phone,
       company: lead.company,
-      strategy: `${lead.strategy}${priorContext}`,
+      strategy: `${lead.strategy}${
+        lead.leadContext
+          ? `\n\n## Lead context\n${lead.leadContext}\nUse this context naturally and do not state unverified details as fact.`
+          : ""
+      }${priorContext}`,
       productKnowledge: organization.productKnowledge,
     };
   },

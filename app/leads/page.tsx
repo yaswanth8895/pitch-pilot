@@ -104,7 +104,7 @@ export default function LeadsPage() {
               ? "Preparing strategies"
               : newLeadCount === 0
                 ? "All strategies ready"
-                : `Prepare ${newLeadCount} ${newLeadCount === 1 ? "strategy" : "strategies"}`}
+                : `Prepare ${newLeadCount} ${newLeadCount === 1 ? "lead" : "leads"}`}
           </Button>
         </div>
       </div>
