@@ -6,6 +6,7 @@ import { useAction, useMutation, useQuery } from "convex/react";
 import {
   ArrowRight,
   Check,
+  Download,
   FileSpreadsheet,
   Globe2,
   LoaderCircle,
@@ -185,7 +186,17 @@ export default function SetupPage() {
           </div>
 
           <div>
-            <span className="text-sm font-medium text-slate-800">Lead list</span>
+            <div className="flex items-center justify-between gap-4">
+              <span className="text-sm font-medium text-slate-800">Lead list</span>
+              <a
+                className="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-950"
+                download
+                href="/leads-template.csv"
+              >
+                <Download className="size-3.5" />
+                Download template
+              </a>
+            </div>
             <label className="mt-2 flex cursor-pointer items-center justify-between rounded-lg border border-dashed border-slate-300 bg-slate-50/70 p-4 hover:border-slate-400">
               <span className="flex items-center gap-3">
                 <span className="flex size-10 items-center justify-center rounded-lg border border-slate-200 bg-white text-slate-500">

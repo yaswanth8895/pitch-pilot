@@ -104,7 +104,9 @@ export default function LeadsPage() {
                 <p className="mt-0.5 truncate text-xs text-slate-500">{lead.company}</p>
               </div>
               <span className="truncate text-slate-600">{lead.phone}</span>
-              <Badge className={stateStyles[lead.currentState]}>{lead.currentState}</Badge>
+              <Badge className={`w-fit justify-self-start ${stateStyles[lead.currentState]}`}>
+                {lead.currentState.replaceAll("_", " ")}
+              </Badge>
               <span className="text-slate-600">{lead.meetingBooked ? "Yes" : "No"}</span>
               <span className="truncate pr-4 text-xs text-slate-500">
                 {lead.summary ?? "No call yet"}
