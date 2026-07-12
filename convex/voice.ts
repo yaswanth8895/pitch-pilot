@@ -62,21 +62,25 @@ export const receiveTranscript = internalMutation({
   },
   handler: async (ctx, { leadId, transcript }) => {
     const id = ctx.db.normalizeId("leads", leadId);
-    if (!id) throw new Error("Invalid lead ID.");
+    if (!id) return { accepted: false as const, reason: "not_found" as const };
     const lead = await ctx.db.get(id);
-    if (!lead) throw new Error("Lead not found.");
-    if (lead.currentState !== "CALLING") {
-      throw new Error("Lead is not in an active call.");
+    if (!lead) return { accepted: false as const, reason: "not_found" as const };
+    if (lead.transcript) {
+      return { accepted: true as const, duplicate: true };
+    }
+    if (!lead.callStarted) {
+      return { accepted: false as const, reason: "not_started" as const };
     }
 
     await ctx.db.patch(id, {
-      transcript,
+      transcript: transcript.trim(),
       history: [
         ...lead.history,
         { timestamp: Date.now(), event: "Transcript Received" },
       ],
     });
     await ctx.scheduler.runAfter(0, internal.ai.processTranscript, { leadId: id });
+    return { accepted: true as const, duplicate: false };
   },
 });
 

@@ -34,15 +34,29 @@ http.route({
   method: "POST",
   handler: httpAction(async (ctx, request) => {
     if (!authorized(request)) return json({ error: "Unauthorized" }, 401);
-    const body = (await request.json()) as { leadId?: unknown; transcript?: unknown };
-    if (typeof body.leadId !== "string" || typeof body.transcript !== "string") {
+    let body: { leadId?: unknown; transcript?: unknown };
+    try {
+      body = (await request.json()) as typeof body;
+    } catch {
+      return json({ error: "Invalid JSON" }, 400);
+    }
+    if (
+      typeof body.leadId !== "string" ||
+      typeof body.transcript !== "string" ||
+      !body.transcript.trim()
+    ) {
       return json({ error: "leadId and transcript are required" }, 400);
     }
-    await ctx.runMutation(internal.voice.receiveTranscript, {
+    const result = await ctx.runMutation(internal.voice.receiveTranscript, {
       leadId: body.leadId,
       transcript: body.transcript,
     });
-    return json({ accepted: true }, 202);
+    if (!result.accepted) {
+      return result.reason === "not_found"
+        ? json({ error: "Lead not found" }, 404)
+        : json({ error: "Call has not started for this lead" }, 409);
+    }
+    return json({ accepted: true, duplicate: result.duplicate }, 202);
   }),
 });
 
