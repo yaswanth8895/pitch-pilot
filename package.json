@@ -1,0 +1,50 @@
+{
+  "name": "pitch-pilot",
+  "version": "0.1.0",
+  "private": true,
+  "description": "PitchPilot is a hackathon-scale AI outbound sales agency. A user supplies a product landing page and a CSV of leads; the system extracts product knowledge, prepares personalized strategies, triggers one outbound call at a time, and displays the transcript and sales outcome on a live dashboard.",
+  "scripts": {
+    "dev": "next dev",
+    "dev:convex": "convex dev",
+    "lint": "eslint .",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "build": "next build",
+    "smoke": "npm run lint && npm run typecheck && npm test && npm run build",
+    "deploy:convex": "convex deploy"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yaswanth8895/pitch-pilot.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/yaswanth8895/pitch-pilot/issues"
+  },
+  "homepage": "https://github.com/yaswanth8895/pitch-pilot#readme",
+  "dependencies": {
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "convex": "^1.42.1",
+    "lucide-react": "^1.24.0",
+    "next": "^15.5.20",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.5.2",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.20",
+    "postcss": "^8.5.17",
+    "tailwindcss": "^3.4.19",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.10"
+  }
+}

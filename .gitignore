@@ -1,33 +1,41 @@
-# Secrets and local environment
+# dependencies
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# secrets and local environment
 .env
 .env.*
 !.env.example
+.env.local
+.env.*.local
 *.pem
 *.key
 *.p12
 
-# macOS and editors
-.DS_Store
-.idea/
-.vscode/*.log
-*.swp
-*.swo
+# Convex local configuration
+.convex/
 
 # Hermes local output
 .hermes/plans/
 .hermes/checkpoints/
 
-# JavaScript / TypeScript
-node_modules/
-.next/
-dist/
-build/
+# test and tooling output
 coverage/
+*.tsbuildinfo
 .turbo/
 .vite/
-*.tsbuildinfo
+dist/
+build/
+.cache/
+tmp/
+temp/
+logs/
+*.log
 
-# Python
+# Python tooling used by hackathon scripts
 __pycache__/
 *.py[cod]
 .pytest_cache/
@@ -37,9 +45,9 @@ __pycache__/
 venv/
 *.egg-info/
 
-# General output
-.cache/
-tmp/
-temp/
-logs/
-*.log
+# OS and editors
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*.swo
