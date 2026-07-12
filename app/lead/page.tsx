@@ -1,21 +1,50 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useQuery } from "convex/react";
-import { ArrowLeft, FileText, MessageSquareText, Phone, Sparkles } from "lucide-react";
+import { useAction, useQuery } from "convex/react";
+import {
+  ArrowLeft,
+  FileText,
+  LoaderCircle,
+  MessageSquareText,
+  Phone,
+  PhoneCall,
+  Sparkles,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { api } from "@/convex/_generated/api";
+import type { Id } from "@/convex/_generated/dataModel";
 import { parseTranscript } from "@/lib/transcript";
 
 function LeadDetails() {
   const searchParams = useSearchParams();
   const leadId = searchParams.get("id");
   const lead = useQuery(api.leads.getById, leadId ? { leadId } : "skip");
+  const startCall = useAction(api.voice.startCall);
+  const [isStartingCall, setIsStartingCall] = useState(false);
+  const [callMessage, setCallMessage] = useState("");
   const transcriptTurns = parseTranscript(lead?.transcript ?? "");
+
+  const handleStartCall = async () => {
+    if (!lead) return;
+    setCallMessage("");
+    setIsStartingCall(true);
+    try {
+      const result = await startCall({ leadId: lead._id as Id<"leads"> });
+      setCallMessage(
+        result.callId ? `Call started · ${result.callId}` : "Call started successfully.",
+      );
+    } catch (error) {
+      setCallMessage(error instanceof Error ? error.message : "Call could not be started.");
+    } finally {
+      setIsStartingCall(false);
+    }
+  };
 
   return (
     <div>
@@ -40,7 +69,23 @@ function LeadDetails() {
                 : "Open a lead from the dashboard to see its call workspace."}
           </p>
         </div>
+        {lead?.currentState === "READY" && !lead.callStarted && (
+          <Button disabled={isStartingCall} onClick={handleStartCall} type="button">
+            {isStartingCall ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <PhoneCall className="size-4" />
+            )}
+            {isStartingCall ? "Starting call" : "Start call"}
+          </Button>
+        )}
       </div>
+
+      {callMessage && (
+        <p className="mt-4 rounded-md border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+          {callMessage}
+        </p>
+      )}
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
         <div className="space-y-6">
