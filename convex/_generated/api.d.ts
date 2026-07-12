@@ -10,6 +10,7 @@
 
 import type * as ai from "../ai.js";
 import type * as crm from "../crm.js";
+import type * as demo from "../demo.js";
 import type * as http from "../http.js";
 import type * as leads from "../leads.js";
 import type * as organizations from "../organizations.js";
@@ -26,6 +27,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   ai: typeof ai;
   crm: typeof crm;
+  demo: typeof demo;
   http: typeof http;
   leads: typeof leads;
   organizations: typeof organizations;

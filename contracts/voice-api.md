@@ -55,6 +55,27 @@ Owns:
 
 The voice application must not determine the CRM state or meeting status. Convex and Hermes own that decision.
 
+## Production handoff
+
+Use this Agency base URL for the hackathon deployment:
+
+```text
+https://impressive-ferret-121.convex.site
+```
+
+Therefore the production endpoints are:
+
+- `GET /voice/context`
+- `POST /voice/completed`
+- `POST /voice/failed`
+
+Ask the Agency/UI developer for the current `VOICE_SHARED_SECRET` through a
+private channel and store it as a Cloudflare Worker secret. Do not paste it into
+GitHub, chat screenshots, or source code.
+
+Recording upload is deferred for the MVP. Do not call `/voice/recording`; a
+missing recording must never block the transcript and CRM outcome flow.
+
 ## System flow
 
 ```text
@@ -238,7 +259,7 @@ Successful response:
 
 Convex will mark the lead `FAILED` and append the failure to its history.
 
-### Save a recording
+### Save a recording (deferred; not implemented)
 
 After a completed call, the voice Worker pulls the call audio from ElevenLabs and
 sends the raw bytes to Convex, which stores them in **Convex file storage** and

@@ -7,8 +7,18 @@ PitchPilot is a hackathon-scale AI outbound sales agency. A user supplies a prod
 - Cloudflare Pages hosts the statically exported Next.js 15 dashboard.
 - Convex stores organizations, leads, and runs and provides backend actions and realtime updates.
 - Linkup fetches landing-page content.
-- Hermes creates product knowledge, lead strategies, and transcript outcomes.
+- Hermes creates product knowledge, lead strategies, and transcript outcomes from an Azure Container Apps deployment built from `infra/hermes`.
 - A separately maintained voice application receives only `{ leadId }` and uses ElevenLabs with Twilio for the call and final transcript.
+
+## Deployed demo
+
+- Dashboard: https://pitch-pilot.pages.dev
+- Convex production API: https://impressive-ferret-121.convex.cloud
+- Convex voice HTTP actions: https://impressive-ferret-121.convex.site
+- Hermes API: https://pitch-pilot-hermes.bravehill-6bfdcb7d.centralindia.azurecontainerapps.io/v1
+
+Hermes and Convex credentials are stored in their managed secret stores. None of
+the deployed service keys belong in this repository or in the browser bundle.
 
 The MVP intentionally excludes authentication, multiple campaigns, CRM integrations, scheduling, retries, queues, analytics, and generalized architecture layers.
 

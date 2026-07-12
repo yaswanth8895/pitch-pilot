@@ -1,0 +1,16 @@
+model:
+  default: gpt-5.6-terra
+  provider: openai-api
+  base_url: https://api.openai.com/v1
+
+agent:
+  max_turns: 12
+  verbose: false
+  reasoning_effort: medium
+
+memory:
+  memory_enabled: false
+  user_profile_enabled: false
+
+streaming:
+  enabled: false
