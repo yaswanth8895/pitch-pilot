@@ -92,7 +92,7 @@ export const attachExternalCall = internalMutation({
     if (!call) return;
     await ctx.db.patch(callRecordId, {
       externalCallId,
-      status: "CALLING",
+      ...(call.status === "STARTING" ? { status: "CALLING" as const } : {}),
       history: [...call.history, { timestamp: Date.now(), event: "Voice Call Accepted" }],
     });
   },
@@ -249,17 +249,16 @@ export const receiveFailure = internalMutation({
     const call = await findCall(ctx, id, callId);
     const lead = await ctx.db.get(id);
     if (!lead) return { skipped: true };
+    if (!call || call.status === "COMPLETED") return { skipped: true };
     const now = Date.now();
-    if (call && call.status !== "COMPLETED") {
-      await ctx.db.patch(call._id, {
-        externalCallId: call.externalCallId ?? callId,
-        status: "FAILED",
-        endedAt: now,
-        failureReason: reason,
-        outcome: "FAILED",
-        history: [...call.history, { timestamp: now, event: `Call Failed: ${reason}` }],
-      });
-    }
+    await ctx.db.patch(call._id, {
+      externalCallId: call.externalCallId ?? callId,
+      status: "FAILED",
+      endedAt: now,
+      failureReason: reason,
+      outcome: "FAILED",
+      history: [...call.history, { timestamp: now, event: `Call Failed: ${reason}` }],
+    });
     await ctx.db.patch(id, {
       currentState: "FAILED",
       history: [...lead.history, { timestamp: now, event: `Call Failed: ${reason}` }],

@@ -128,7 +128,7 @@ function LeadDetails() {
             )}
             {isStartingCall
               ? "Starting call"
-              : calls?.length || lead.callStarted
+              : calls?.length || lead.callStarted || lead.transcript
                 ? "Start follow-up call"
                 : "Start call"}
           </Button>
