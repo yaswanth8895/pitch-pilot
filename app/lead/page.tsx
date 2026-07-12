@@ -128,7 +128,7 @@ function LeadDetails() {
             )}
             {isStartingCall
               ? "Starting call"
-              : calls?.length
+              : calls?.length || lead.callStarted
                 ? "Start follow-up call"
                 : "Start call"}
           </Button>

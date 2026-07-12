@@ -25,11 +25,17 @@ export const getContext = internalQuery({
       .collect())
       .filter((call) => call.status === "COMPLETED" && call.summary)
       .sort((a, b) => a.startedAt - b.startedAt);
-    const priorContext = completedCalls.length
-      ? `\n\n## Previous conversations\n${completedCalls
+    const summaries = completedCalls.map(
+      (call) =>
+        `${new Date(call.startedAt).toISOString()}: ${call.summary} Outcome: ${call.outcome ?? "UNKNOWN"}.`,
+    );
+    if (summaries.length === 0 && lead.callStarted && lead.summary) {
+      summaries.push(`Earlier call: ${lead.summary} Outcome: ${lead.currentState}.`);
+    }
+    const priorContext = summaries.length
+      ? `\n\n## Previous conversations\n${summaries
           .map(
-            (call, index) =>
-              `${index + 1}. ${new Date(call.startedAt).toISOString()}: ${call.summary} Outcome: ${call.outcome ?? "UNKNOWN"}.`,
+            (summary, index) => `${index + 1}. ${summary}`,
           )
           .join("\n")}\nContinue naturally from these conversations. Do not repeat questions already answered.`
       : "";
