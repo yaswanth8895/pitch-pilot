@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 
-import { mutation, query } from "./_generated/server";
+import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 
 export const list = query({
   args: {},
@@ -62,5 +62,73 @@ export const importLeads = mutation({
     }
 
     return { created, skipped, total: existingLeads.length + created };
+  },
+});
+
+export const getStrategyInputs = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    const organization = await ctx.db.query("organizations").first();
+    if (!organization?.productKnowledge) {
+      throw new Error("Generate product knowledge before creating strategies.");
+    }
+
+    const leads = await ctx.db.query("leads").collect();
+    return {
+      productKnowledge: organization.productKnowledge,
+      leads: leads.filter((lead) => lead.currentState === "NEW"),
+    };
+  },
+});
+
+export const saveStrategy = internalMutation({
+  args: {
+    leadId: v.id("leads"),
+    strategy: v.string(),
+    latency: v.number(),
+  },
+  handler: async (ctx, { leadId, strategy, latency }) => {
+    const lead = await ctx.db.get(leadId);
+    if (!lead) throw new Error("Lead no longer exists.");
+
+    await ctx.db.patch(leadId, {
+      strategy,
+      currentState: "READY",
+      history: [
+        ...lead.history,
+        { timestamp: Date.now(), event: "Strategy Generated" },
+      ],
+    });
+    await ctx.db.insert("runs", {
+      leadId,
+      steps: [{ name: "Strategy Generated", status: "completed", latency, cost: 0 }],
+      latency,
+      cost: 0,
+    });
+  },
+});
+
+export const failStrategy = internalMutation({
+  args: {
+    leadId: v.id("leads"),
+    latency: v.number(),
+  },
+  handler: async (ctx, { leadId, latency }) => {
+    const lead = await ctx.db.get(leadId);
+    if (!lead) return;
+
+    await ctx.db.patch(leadId, {
+      currentState: "FAILED",
+      history: [
+        ...lead.history,
+        { timestamp: Date.now(), event: "Strategy Generation Failed" },
+      ],
+    });
+    await ctx.db.insert("runs", {
+      leadId,
+      steps: [{ name: "Strategy Generated", status: "failed", latency, cost: 0 }],
+      latency,
+      cost: 0,
+    });
   },
 });

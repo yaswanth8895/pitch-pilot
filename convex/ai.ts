@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { action } from "./_generated/server";
 import { parseProductKnowledge } from "./productKnowledge";
+import { cleanStrategy } from "./strategy";
 
 const PRODUCT_EXPERT_PROMPT = `You are the Product Expert for an outbound sales team.
 Analyze only the supplied landing-page content and return a JSON object with exactly this shape:
@@ -111,5 +112,86 @@ export const extractProductKnowledge = action({
     });
 
     return productKnowledge;
+  },
+});
+
+const STRATEGY_PROMPT = `You are the Strategy Agent for an outbound sales team.
+Create a concise, practical call strategy using only the supplied product knowledge and lead information.
+Return readable Markdown with exactly these sections:
+## Why this lead
+## Opening
+## Discovery questions
+## Likely objections
+## Suggested responses
+## Call goal
+
+Personalize the strategy for the lead's company without inventing private facts. Keep the entire strategy under 450 words.`;
+
+export const generateStrategies = action({
+  args: {},
+  handler: async (ctx) => {
+    const { productKnowledge, leads } = await ctx.runQuery(
+      internal.leads.getStrategyInputs,
+    );
+    if (leads.length === 0) {
+      return { ready: 0, failed: 0, message: "No new leads need strategies." };
+    }
+
+    const hermesBaseUrl = getRequiredEnvironmentVariable("HERMES_BASE_URL").replace(/\/$/, "");
+    const hermesApiKey = getRequiredEnvironmentVariable("HERMES_API_KEY");
+    let ready = 0;
+    let failed = 0;
+
+    for (const lead of leads) {
+      const startedAt = Date.now();
+      try {
+        const response = await fetch(`${hermesBaseUrl}/chat/completions`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${hermesApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "hermes-agent",
+            messages: [
+              { role: "system", content: STRATEGY_PROMPT },
+              {
+                role: "user",
+                content: `Product knowledge:\n${JSON.stringify(productKnowledge)}\n\nLead:\n${JSON.stringify({ name: lead.name, phone: lead.phone, company: lead.company })}`,
+              },
+            ],
+            stream: false,
+          }),
+          signal: AbortSignal.timeout(90_000),
+        });
+
+        if (!response.ok) {
+          throw new Error(`Hermes returned ${response.status}.`);
+        }
+
+        const result = (await response.json()) as {
+          choices?: Array<{ message?: { content?: unknown } }>;
+        };
+        const content = result.choices?.[0]?.message?.content;
+        if (typeof content !== "string") {
+          throw new Error("Hermes returned no strategy.");
+        }
+
+        await ctx.runMutation(internal.leads.saveStrategy, {
+          leadId: lead._id,
+          strategy: cleanStrategy(content),
+          latency: Date.now() - startedAt,
+        });
+        ready += 1;
+      } catch {
+        await ctx.runMutation(internal.leads.failStrategy, {
+          leadId: lead._id,
+          latency: Date.now() - startedAt,
+        });
+        failed += 1;
+      }
+    }
+
+    return { ready, failed };
   },
 });

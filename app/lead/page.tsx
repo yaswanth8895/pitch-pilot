@@ -47,7 +47,7 @@ function LeadDetails() {
               <FileText className="size-4 text-slate-400" />
               Call strategy
             </div>
-            <div className="mt-5 rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center text-sm text-slate-500">
+            <div className="mt-5 whitespace-pre-wrap rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-left text-sm leading-6 text-slate-600">
               {lead?.strategy ?? "Strategy will appear after the lead is prepared."}
             </div>
           </Card>

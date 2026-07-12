@@ -1,10 +1,20 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
-import { useQuery } from "convex/react";
-import { ArrowRight, ArrowUpRight, Clock3, PhoneCall, Users } from "lucide-react";
+import { useAction, useQuery } from "convex/react";
+import {
+  ArrowRight,
+  ArrowUpRight,
+  Clock3,
+  LoaderCircle,
+  PhoneCall,
+  Sparkles,
+  Users,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { api } from "@/convex/_generated/api";
 
@@ -19,7 +29,10 @@ const stateStyles: Record<string, string> = {
 };
 
 export default function LeadsPage() {
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationMessage, setGenerationMessage] = useState("");
   const leads = useQuery(api.leads.list);
+  const generateStrategies = useAction(api.ai.generateStrategies);
   const total = leads?.length ?? 0;
   const ready = leads?.filter((lead) => lead.currentState === "READY").length ?? 0;
   const meetings = leads?.filter((lead) => lead.meetingBooked).length ?? 0;
@@ -36,6 +49,27 @@ export default function LeadsPage() {
     { label: "Meetings", value: meetings, icon: Clock3 },
   ];
 
+  const newLeadCount = leads?.filter((lead) => lead.currentState === "NEW").length ?? 0;
+
+  const handleGenerateStrategies = async () => {
+    setGenerationMessage("");
+    setIsGenerating(true);
+    try {
+      const result = await generateStrategies();
+      setGenerationMessage(
+        result.failed > 0
+          ? `${result.ready} ready, ${result.failed} failed.`
+          : `${result.ready} ${result.ready === 1 ? "strategy" : "strategies"} ready.`,
+      );
+    } catch (error) {
+      setGenerationMessage(
+        error instanceof Error ? error.message : "Strategy generation failed.",
+      );
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   return (
     <div>
       <div className="flex items-end justify-between">
@@ -48,10 +82,31 @@ export default function LeadsPage() {
             Strategies, calls, and outcomes update here automatically.
           </p>
         </div>
-        <Badge>
-          <span className="mr-1.5 size-1.5 rounded-full bg-emerald-500" />
-          Live
-        </Badge>
+        <div className="flex items-center gap-3">
+          {generationMessage && (
+            <span className="text-xs font-medium text-slate-500">{generationMessage}</span>
+          )}
+          <Badge>
+            <span className="mr-1.5 size-1.5 rounded-full bg-emerald-500" />
+            Live
+          </Badge>
+          <Button
+            disabled={newLeadCount === 0 || isGenerating}
+            onClick={handleGenerateStrategies}
+            size="sm"
+          >
+            {isGenerating ? (
+              <LoaderCircle className="size-4 animate-spin" />
+            ) : (
+              <Sparkles className="size-4" />
+            )}
+            {isGenerating
+              ? "Preparing strategies"
+              : newLeadCount === 0
+                ? "All strategies ready"
+                : `Prepare ${newLeadCount} ${newLeadCount === 1 ? "strategy" : "strategies"}`}
+          </Button>
+        </div>
       </div>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
