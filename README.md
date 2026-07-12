@@ -33,6 +33,25 @@ See `docs/PRODUCT_BRIEF.md` for the exact scope and `docs/DECISIONS.md` for acce
 
 The independently maintained voice application must follow [`contracts/voice-api.md`](contracts/voice-api.md). That document defines ownership, hosting, authentication, endpoints, payloads, environment variables, and the integration test sequence.
 
+## Hermes for local development
+
+Hermes runs as a separate OpenAI-compatible agent server. Configure its model provider with `hermes model`; choose the direct OpenAI API provider to use OpenAI API credits. Then enable the API server in `~/.hermes/.env`:
+
+```text
+API_SERVER_ENABLED=true
+API_SERVER_KEY=<local-secret>
+```
+
+Start it with `hermes gateway`. Configure Convex with the matching URL and key:
+
+```bash
+npx convex env set HERMES_BASE_URL http://127.0.0.1:8642/v1
+npx convex env set HERMES_API_KEY <local-secret>
+npx convex env set LINKUP_API_KEY <linkup-key>
+```
+
+Never commit either key. The model name sent to Hermes remains `hermes-agent`; the real OpenAI model is selected inside Hermes.
+
 ## First-time Hermes setup
 
 ```bash

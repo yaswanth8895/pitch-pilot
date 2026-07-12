@@ -1,8 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowRight, Check, FileSpreadsheet, Globe2, Upload } from "lucide-react";
+import { useAction, useQuery } from "convex/react";
+import {
+  ArrowRight,
+  Check,
+  FileSpreadsheet,
+  Globe2,
+  LoaderCircle,
+  Sparkles,
+  Upload,
+} from "lucide-react";
 
+import { api } from "@/convex/_generated/api";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 
@@ -15,6 +25,24 @@ const steps = [
 export default function SetupPage() {
   const [landingPage, setLandingPage] = useState("");
   const [fileName, setFileName] = useState("");
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionError, setExtractionError] = useState("");
+  const organization = useQuery(api.organizations.getCurrent);
+  const extractProductKnowledge = useAction(api.ai.extractProductKnowledge);
+
+  const handleExtraction = async () => {
+    setExtractionError("");
+    setIsExtracting(true);
+    try {
+      await extractProductKnowledge({ landingPage });
+    } catch (error) {
+      setExtractionError(
+        error instanceof Error ? error.message : "Product extraction failed.",
+      );
+    } finally {
+      setIsExtracting(false);
+    }
+  };
 
   return (
     <div className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr]">
@@ -75,9 +103,52 @@ export default function SetupPage() {
                 value={landingPage}
               />
             </div>
-            <p className="mt-2 text-xs text-slate-500">
-              This page becomes the source of truth for every call.
-            </p>
+            <div className="mt-3 flex items-center justify-between gap-4">
+              <p className="text-xs text-slate-500">
+                This page becomes the source of truth for every call.
+              </p>
+              <Button
+                disabled={!landingPage || isExtracting}
+                onClick={handleExtraction}
+                size="sm"
+                type="button"
+                variant="outline"
+              >
+                {isExtracting ? (
+                  <LoaderCircle className="size-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="size-3.5" />
+                )}
+                {isExtracting ? "Analyzing" : "Analyze page"}
+              </Button>
+            </div>
+            {extractionError && (
+              <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+                {extractionError}
+              </p>
+            )}
+            {organization?.productKnowledge && (
+              <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50/60 p-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-emerald-900">
+                  <Check className="size-4" />
+                  Product knowledge ready
+                </div>
+                <p className="mt-2 text-xs leading-5 text-emerald-800">
+                  {organization.productKnowledge.summary}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-emerald-800">
+                    {organization.productKnowledge.features.length} features
+                  </span>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-emerald-800">
+                    {organization.productKnowledge.benefits.length} benefits
+                  </span>
+                  <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-emerald-800">
+                    {organization.productKnowledge.objections.length} objections
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
 
           <div>
@@ -116,7 +187,10 @@ export default function SetupPage() {
             </div>
           </div>
 
-          <Button className="w-full" disabled={!landingPage || !fileName}>
+          <Button
+            className="w-full"
+            disabled={!organization?.productKnowledge || !fileName}
+          >
             Start campaign
             <ArrowRight className="size-4" />
           </Button>
