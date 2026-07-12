@@ -31,6 +31,8 @@ npm run dev
 
 See `docs/PRODUCT_BRIEF.md` for the exact scope and `docs/DECISIONS.md` for accepted architecture decisions.
 
+The independently maintained voice application must follow [`contracts/voice-api.md`](contracts/voice-api.md). That document defines ownership, hosting, authentication, endpoints, payloads, environment variables, and the integration test sequence.
+
 ## First-time Hermes setup
 
 ```bash
