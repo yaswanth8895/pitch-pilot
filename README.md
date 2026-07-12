@@ -8,7 +8,7 @@ PitchPilot is a hackathon-scale AI outbound sales agency. A user supplies a prod
 - Convex stores organizations, leads, and runs and provides backend actions and realtime updates.
 - Linkup fetches landing-page content.
 - Hermes creates product knowledge, lead strategies, and transcript outcomes.
-- A separately maintained voice application receives only `{ leadId }`, places the call with ElevenLabs and Twilio, and uses Wispr Flow for the final transcript.
+- A separately maintained voice application receives only `{ leadId }` and uses ElevenLabs with Twilio for the call and final transcript.
 
 The MVP intentionally excludes authentication, multiple campaigns, CRM integrations, scheduling, retries, queues, analytics, and generalized architecture layers.
 

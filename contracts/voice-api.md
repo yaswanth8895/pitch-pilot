@@ -13,12 +13,11 @@ The hackathon goal is one reliable outbound call. Keep the voice application int
 | Product extraction | Linkup Fetch API | Agency/UI developer | Called from Convex |
 | AI processing | Hermes API | Agency/UI developer | Called from Convex |
 | Voice adapter | TypeScript Cloudflare Worker | Voice developer | Cloudflare Workers |
-| Calling and realtime agent | ElevenLabs Agents with a Twilio phone number | Voice developer | Managed by ElevenLabs and Twilio |
-| Final call transcription | Wispr Flow Voice Interface REST API | Voice developer | Managed by Wispr Flow |
+| Calling, realtime agent, and transcript | ElevenLabs Agents with a Twilio phone number | Voice developer | Managed by ElevenLabs and Twilio |
 
 Do not add Azure, a custom persistent server, Docker, Redis, queues, Twilio Media Streams, or custom WebSocket/audio infrastructure. Use the native ElevenLabs Twilio integration.
 
-ElevenLabs and Wispr Flow are mandatory. Do not substitute Vapi, Retell, or an unofficial Wispr SDK.
+Use ElevenLabs post-call transcription as the authoritative transcript. Do not add Wispr Flow, Vapi, Retell, or another transcription provider.
 
 ## Ownership
 
@@ -44,13 +43,11 @@ Owns:
 
 - ElevenLabs account, agent, and native Twilio integration
 - Twilio account and outbound-capable phone number
-- Wispr Flow Developer Platform access and API key
 - The Cloudflare Worker voice adapter
 - `POST /start-call` and `GET /health`
 - Retrieving lead context from Convex
 - Passing concise dynamic variables to ElevenLabs
-- Receiving ElevenLabs call events and retrieving the completed call audio
-- Sending the completed call audio to the official Wispr Flow API
+- Receiving and validating ElevenLabs post-call transcription webhooks
 - Forwarding the final transcript or failure to Convex
 - Voice deployment and real-call testing
 
@@ -65,9 +62,8 @@ Next.js UI
   -> Voice Worker GETs lead context from Convex
   -> Voice Worker creates an ElevenLabs outbound call
   -> ElevenLabs calls the lead through its native Twilio integration
-  -> ElevenLabs posts the completed call event to the Voice Worker
-  -> Voice Worker sends the completed call audio to Wispr Flow
-  -> Voice Worker sends the Wispr transcript or failure to Convex
+  -> ElevenLabs posts the completed transcript to the Voice Worker
+  -> Voice Worker sends the ElevenLabs transcript or failure to Convex
   -> Convex processes and stores the result
   -> Next.js UI updates through its Convex subscription
 ```
@@ -132,7 +128,7 @@ Use these status codes:
 - `401`: missing or invalid shared secret
 - `404`: lead not found
 - `409`: lead already called or another call is active
-- `502`: ElevenLabs, Twilio, or Wispr Flow rejected the request
+- `502`: ElevenLabs or Twilio rejected the request
 
 ### Health check
 
@@ -198,8 +194,8 @@ X-Shared-Secret: <VOICE_SHARED_SECRET>
 {
   "leadId": "...",
   "callId": "...",
-  "transcript": "Final Wispr Flow transcript",
-  "transcriptProvider": "wispr-flow",
+  "transcript": "Final ElevenLabs transcript",
+  "transcriptProvider": "elevenlabs",
   "endedReason": "customer-ended-call"
 }
 ```
@@ -214,7 +210,7 @@ Successful response:
 
 Convex is responsible for storing the transcript, calling the Hermes CRM Agent, updating the summary, final state, meeting flag, and activity history.
 
-Send only the final Wispr Flow transcript. Do not forward every partial transcript event to Convex. The ElevenLabs transcript may be retained temporarily for debugging but is not the authoritative CRM transcript.
+Send only the final ElevenLabs transcript. Do not forward partial transcript events to Convex.
 
 ### Report a call failure
 
@@ -240,7 +236,7 @@ Successful response:
 
 Convex will mark the lead `FAILED` and append the failure to its history.
 
-## ElevenLabs and Wispr Flow behavior
+## ElevenLabs behavior
 
 The Worker should perform this sequence:
 
@@ -264,24 +260,23 @@ Pass only concise dynamic variables to the ElevenLabs agent:
 }
 ```
 
-Configure ElevenLabs to send completed-call events to a Worker route such as `POST /webhooks/elevenlabs`.
+Configure the ElevenLabs `post_call_transcription` webhook to send completed calls to a Worker route such as `POST /webhooks/elevenlabs`.
 
 The Worker needs to handle only:
 
 - Call status events needed for debugging
-- End-of-call notification and completed call audio
+- Final post-call transcript
 - Provider or call failure
 
 After the call ends, the Worker must:
 
-1. Retrieve the completed call recording from ElevenLabs.
-2. Convert it to base64-encoded, mono, 16-bit PCM WAV at 16 kHz if necessary.
-3. Send it to the official Wispr Flow REST transcription endpoint.
-4. Send the returned Wispr text to Convex through `/voice/completed`.
+1. Validate the `ElevenLabs-Signature` HMAC header using the webhook secret.
+2. Handle `post_call_transcription` and flatten the transcript turns into readable text.
+3. Read `leadId` from the conversation's dynamic variables or metadata.
+4. Send the final text to Convex through `/voice/completed`.
+5. Handle `call_initiation_failure` by calling `/voice/failed`.
 
-Use the REST API because the demo needs only a final post-call transcript. Do not add a Wispr WebSocket pipeline or live transcript streaming.
-
-Wispr Flow currently limits a REST transcription request to 25 MB or six minutes. Keep the demo call under three minutes.
+Return HTTP `200` promptly after successful webhook processing. Do not enable the separate audio webhook or build live transcript streaming for the MVP.
 
 ## Voice repository
 
@@ -297,7 +292,7 @@ pitch-pilot-voice/
 └── .env.example
 ```
 
-Recommended dependencies are limited to Cloudflare Worker tooling and a small validator or audio conversion library only if required. Direct `fetch` calls to ElevenLabs, Wispr Flow, and Convex are sufficient.
+Recommended dependencies are limited to Cloudflare Worker tooling, the ElevenLabs SDK for HMAC verification, and a small validator only if it saves time. Direct `fetch` calls to ElevenLabs and Convex are sufficient.
 
 ## Environment variables
 
@@ -307,7 +302,7 @@ Voice Worker secrets:
 ELEVENLABS_API_KEY=
 ELEVENLABS_AGENT_ID=
 ELEVENLABS_PHONE_NUMBER_ID=
-WISPR_FLOW_API_KEY=
+ELEVENLABS_WEBHOOK_SECRET=
 CONVEX_SITE_URL=
 VOICE_SHARED_SECRET=
 ```
@@ -331,25 +326,18 @@ Do not put any of these values in Git.
 4. The Worker posts a fake transcript to `/voice/completed`.
 5. Confirm that Convex stores the result and the dashboard updates.
 
-Do not start ElevenLabs or Wispr Flow integration until this round trip works.
+Do not start ElevenLabs integration until this round trip works.
 
 ### Stage 2: ElevenLabs call
 
 1. Replace the fake call with an ElevenLabs outbound-call request.
 2. Call one approved test phone number.
 3. Confirm that the phone rings and the assistant speaks.
-4. Confirm that ElevenLabs sends its completed-call event to the Worker.
-5. Confirm that the Worker can retrieve the completed call audio.
+4. Confirm that ElevenLabs sends its signed `post_call_transcription` event to the Worker.
+5. Verify the HMAC signature and forward the final transcript to Convex with `transcriptProvider: "elevenlabs"`.
+6. Confirm that the dashboard updates.
 
-### Stage 3: Wispr Flow transcription
-
-1. Convert the completed call audio to the Wispr Flow input format.
-2. Send the audio through the official Wispr Flow REST API.
-3. Confirm that Wispr returns a final transcript.
-4. Forward that transcript to Convex with `transcriptProvider: "wispr-flow"`.
-5. Confirm that the dashboard updates.
-
-### Stage 4: Demo hardening
+### Stage 3: Demo hardening
 
 Test only:
 
@@ -368,9 +356,8 @@ Prepare a short recording of the successful flow as a fallback.
 - [ ] The Worker retrieves context from Convex.
 - [ ] ElevenLabs places one real outbound call through the configured Twilio number.
 - [ ] The ElevenLabs webhook reaches the Worker.
-- [ ] The Worker retrieves and converts the completed call audio.
-- [ ] The official Wispr Flow API produces the final transcript.
-- [ ] The Worker sends the Wispr transcript to Convex.
+- [ ] The Worker validates the ElevenLabs webhook signature.
+- [ ] The Worker sends the final ElevenLabs transcript to Convex.
 - [ ] Failures are sent to `/voice/failed` with a readable reason.
 - [ ] No credentials are committed.
 - [ ] The deployed Worker URL and required variable names are documented.
