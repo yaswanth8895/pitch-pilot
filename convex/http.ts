@@ -2,8 +2,15 @@ import { httpRouter } from "convex/server";
 
 import { internal } from "./_generated/api";
 import { httpAction } from "./_generated/server";
+import { authComponent, createAuth } from "./auth";
 
 const http = httpRouter();
+
+authComponent.registerRoutesLazy(http, createAuth, {
+  basePath: "/api/auth",
+  cors: true,
+  trustedOrigins: [process.env.SITE_URL!],
+});
 
 function authorized(request: Request) {
   const expected = process.env.VOICE_SHARED_SECRET;

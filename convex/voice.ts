@@ -7,6 +7,7 @@ import {
   internalQuery,
 } from "./_generated/server";
 import { leadState } from "./schema";
+import { requireUser } from "./authz";
 
 export const getContext = internalQuery({
   args: { leadId: v.string() },
@@ -138,6 +139,7 @@ export const failCall = internalMutation({
 export const startCall = action({
   args: { leadId: v.id("leads") },
   handler: async (ctx, { leadId }) => {
+    await requireUser(ctx);
     const serviceUrl = process.env.VOICE_SERVICE_URL;
     const secret = process.env.VOICE_SHARED_SECRET;
     if (!serviceUrl || !secret) throw new Error("Voice service is not configured.");

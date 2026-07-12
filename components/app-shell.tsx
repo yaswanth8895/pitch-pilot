@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { RadioTower } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { authClient } from "@/lib/auth-client";
 
 const navigation = [
   { href: "/", label: "Setup" },
@@ -47,9 +48,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               );
             })}
           </nav>
-          <div className="flex items-center gap-2 text-xs font-medium text-slate-500">
+          <div className="flex items-center gap-3 text-xs font-medium text-slate-500">
             <span className="size-2 rounded-full bg-emerald-500" />
             Demo workspace
+            <button className="rounded-md border border-slate-200 bg-white px-2.5 py-1.5 hover:text-slate-950" onClick={() => authClient.signOut()} type="button">Sign out</button>
           </div>
         </div>
       </header>

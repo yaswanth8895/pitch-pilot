@@ -1,15 +1,17 @@
 import { ConvexError, v } from "convex/values";
 
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
+import { requireUser } from "./authz";
 
 export const list = query({
   args: {},
-  handler: async (ctx) => ctx.db.query("leads").order("desc").collect(),
+  handler: async (ctx) => { await requireUser(ctx); return ctx.db.query("leads").order("desc").collect(); },
 });
 
 export const getById = query({
   args: { leadId: v.string() },
   handler: async (ctx, { leadId }) => {
+    await requireUser(ctx);
     const id = ctx.db.normalizeId("leads", leadId);
     return id ? ctx.db.get(id) : null;
   },
@@ -18,6 +20,7 @@ export const getById = query({
 export const updateStrategy = mutation({
   args: { leadId: v.id("leads"), strategy: v.string() },
   handler: async (ctx, { leadId, strategy }) => {
+    await requireUser(ctx);
     const lead = await ctx.db.get(leadId);
     if (!lead) throw new ConvexError("Lead not found.");
     const value = strategy.trim();
@@ -37,6 +40,7 @@ export const updateStrategy = mutation({
 export const deleteLead = mutation({
   args: { leadId: v.id("leads") },
   handler: async (ctx, { leadId }) => {
+    await requireUser(ctx);
     const lead = await ctx.db.get(leadId);
     if (!lead) return { deleted: false };
 
@@ -61,6 +65,7 @@ export const importLeads = mutation({
     ),
   },
   handler: async (ctx, { leads }) => {
+    await requireUser(ctx);
     const organization = await ctx.db.query("organizations").first();
     if (!organization?.productKnowledge) {
       throw new Error("Generate product knowledge before importing leads.");

@@ -1,10 +1,14 @@
 import { v } from "convex/values";
 
 import { internalMutation, query } from "./_generated/server";
+import { requireUser } from "./authz";
 
 export const getCurrent = query({
   args: {},
-  handler: async (ctx) => ctx.db.query("organizations").first(),
+  handler: async (ctx) => {
+    await requireUser(ctx);
+    return ctx.db.query("organizations").first();
+  },
 });
 
 export const saveProductKnowledge = internalMutation({

@@ -5,6 +5,7 @@ import { action, internalAction } from "./_generated/server";
 import { parseCrmOutcome } from "./crm";
 import { parseProductKnowledge } from "./productKnowledge";
 import { cleanStrategy } from "./strategy";
+import { requireUser } from "./authz";
 
 const PRODUCT_EXPERT_PROMPT = `You are the Product Expert for an outbound sales team.
 Analyze only the supplied landing-page content and return a JSON object with exactly this shape:
@@ -44,6 +45,7 @@ function validateLandingPage(value: string) {
 export const extractProductKnowledge = action({
   args: { landingPage: v.string() },
   handler: async (ctx, { landingPage }) => {
+    await requireUser(ctx);
     const normalizedUrl = validateLandingPage(landingPage);
     const linkupApiKey = getRequiredEnvironmentVariable("LINKUP_API_KEY");
     const hermesBaseUrl = getRequiredEnvironmentVariable("HERMES_BASE_URL").replace(/\/$/, "");
@@ -131,6 +133,7 @@ Personalize the strategy for the lead's company without inventing private facts.
 export const generateStrategies = action({
   args: {},
   handler: async (ctx) => {
+    await requireUser(ctx);
     const { productKnowledge, leads } = await ctx.runQuery(
       internal.leads.getStrategyInputs,
     );
