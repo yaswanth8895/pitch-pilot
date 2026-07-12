@@ -4,7 +4,7 @@
 
 Build the smallest reliable product that clearly demonstrates the team's idea and judging value. Optimize for a working end-to-end demo, not production-scale architecture.
 
-The hackathon date is 2026-07-13. The stack and product are not chosen yet. When they are chosen, update this file, `README.md`, and `docs/PRODUCT_BRIEF.md` with exact technologies, commands, paths, ports, and deployment targets.
+The hackathon date is 2026-07-13. The product is PitchPilot, an AI outbound sales agency. The dashboard uses Next.js 15, React, TypeScript, Tailwind CSS, and shadcn/ui; Convex provides data, backend actions, HTTP integration points, and realtime updates. Linkup fetches landing-page content, Hermes performs the three AI tasks, and the static frontend deploys to Cloudflare Pages.
 
 ## Source of Truth
 
@@ -84,16 +84,19 @@ A task is done only when all applicable items are true:
 
 ## Architecture Guardrails
 
-Until the stack is decided:
+Architecture constraints:
 
 - Keep product code separate from scripts, docs, generated files, and infrastructure.
-- Centralize configuration and external-service clients.
-- Put one clear boundary around each external API so it can be mocked or replaced.
+- Keep Linkup, Hermes, and voice calls in direct, readable Convex actions; do not create generalized provider layers.
+- Keep Hermes, Linkup, and voice secrets in Convex environment variables.
+- Keep Next.js statically exportable: no API routes, Server Actions, middleware, SSR, ISR, or unknown dynamic routes.
+- Use exactly three user routes: `/`, `/leads`, and `/lead?id=<leadId>`.
+- Use only the `organizations`, `leads`, and `runs` Convex tables unless the demo is otherwise impossible.
 - Add timeouts and useful error messages to network calls.
 - Prepare deterministic seed/demo data and a fallback path for unreliable live services.
 - Avoid microservices, custom auth, premature queues, and generalized plugin systems unless the challenge requires them.
 
-Once components exist, add focused `AGENTS.md` files inside major subdirectories only when their commands or conventions differ from this root guide.
+Add focused `AGENTS.md` files inside major subdirectories only when their commands or conventions genuinely differ from this root guide.
 
 ## Hermes Workflow
 
@@ -115,18 +118,20 @@ Use parallel subagents only for independent workstreams. Agents editing code con
 
 ## Commands
 
-Fill these in immediately after selecting the stack; do not leave multiple competing commands.
+Use npm and Node.js 20. These commands are the required interface; Step 2 must create the matching package scripts.
 
 | Purpose | Command |
 |---|---|
-| Install dependencies | TBD |
-| Start development | TBD |
-| Lint | TBD |
-| Type-check | TBD |
-| Unit/integration tests | TBD |
-| Production build | TBD |
-| End-to-end smoke test | TBD |
-| Deploy | TBD |
+| Install dependencies | `npm ci` |
+| Start Next.js | `npm run dev` |
+| Start Convex | `npm run dev:convex` |
+| Lint | `npm run lint` |
+| Type-check | `npm run typecheck` |
+| Unit/integration tests | `npm test` |
+| Production build/static export | `npm run build` |
+| End-to-end smoke test | `npm run smoke` |
+| Deploy Convex | `npm run deploy:convex` |
+| Deploy UI | Cloudflare Pages runs `npm run build` and publishes `out/` |
 
 ## Commit Style
 
