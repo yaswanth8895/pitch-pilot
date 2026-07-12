@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 
 import { internalMutation, internalQuery, mutation, query } from "./_generated/server";
 
@@ -12,6 +12,41 @@ export const getById = query({
   handler: async (ctx, { leadId }) => {
     const id = ctx.db.normalizeId("leads", leadId);
     return id ? ctx.db.get(id) : null;
+  },
+});
+
+export const updateStrategy = mutation({
+  args: { leadId: v.id("leads"), strategy: v.string() },
+  handler: async (ctx, { leadId, strategy }) => {
+    const lead = await ctx.db.get(leadId);
+    if (!lead) throw new ConvexError("Lead not found.");
+    const value = strategy.trim();
+    if (!value) throw new ConvexError("Strategy cannot be empty.");
+    if (value.length > 12_000) throw new ConvexError("Strategy is too long.");
+
+    await ctx.db.patch(leadId, {
+      strategy: value,
+      history: [
+        ...lead.history,
+        { timestamp: Date.now(), event: "Strategy Updated" },
+      ],
+    });
+  },
+});
+
+export const deleteLead = mutation({
+  args: { leadId: v.id("leads") },
+  handler: async (ctx, { leadId }) => {
+    const lead = await ctx.db.get(leadId);
+    if (!lead) return { deleted: false };
+
+    const runs = await ctx.db
+      .query("runs")
+      .withIndex("by_lead", (query) => query.eq("leadId", leadId))
+      .collect();
+    for (const run of runs) await ctx.db.delete(run._id);
+    await ctx.db.delete(leadId);
+    return { deleted: true };
   },
 });
 

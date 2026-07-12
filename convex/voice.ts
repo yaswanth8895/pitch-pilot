@@ -39,11 +39,13 @@ export const reserveCall = internalMutation({
     if (lead.currentState !== "READY" || lead.callStarted) {
       throw new Error("This lead is not eligible for another call.");
     }
-    const activeCall = await ctx.db
+    const activeCalls = await ctx.db
       .query("leads")
       .filter((query) => query.eq(query.field("currentState"), "CALLING"))
-      .first();
-    if (activeCall) throw new Error("Another lead is already being called.");
+      .collect();
+    if (activeCalls.length >= 20) {
+      throw new Error("The 20-call concurrency limit has been reached.");
+    }
 
     await ctx.db.patch(leadId, {
       currentState: "CALLING",

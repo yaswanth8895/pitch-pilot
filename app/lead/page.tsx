@@ -2,8 +2,8 @@
 
 import { Suspense, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { useAction, useQuery } from "convex/react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useAction, useMutation, useQuery } from "convex/react";
 import {
   ArrowLeft,
   FileText,
@@ -11,7 +11,11 @@ import {
   MessageSquareText,
   Phone,
   PhoneCall,
+  Pencil,
+  Save,
   Sparkles,
+  Trash2,
+  X,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -23,11 +27,19 @@ import { parseTranscript } from "@/lib/transcript";
 
 function LeadDetails() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const leadId = searchParams.get("id");
   const lead = useQuery(api.leads.getById, leadId ? { leadId } : "skip");
   const startCall = useAction(api.voice.startCall);
+  const updateStrategy = useMutation(api.leads.updateStrategy);
+  const deleteLead = useMutation(api.leads.deleteLead);
   const [isStartingCall, setIsStartingCall] = useState(false);
   const [callMessage, setCallMessage] = useState("");
+  const [isEditingStrategy, setIsEditingStrategy] = useState(false);
+  const [strategyDraft, setStrategyDraft] = useState("");
+  const [isSavingStrategy, setIsSavingStrategy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const transcriptTurns = parseTranscript(lead?.transcript ?? "");
 
   const handleStartCall = async () => {
@@ -43,6 +55,42 @@ function LeadDetails() {
       setCallMessage(error instanceof Error ? error.message : "Call could not be started.");
     } finally {
       setIsStartingCall(false);
+    }
+  };
+
+  const handleEditStrategy = () => {
+    setStrategyDraft(lead?.strategy ?? "");
+    setCallMessage("");
+    setIsEditingStrategy(true);
+  };
+
+  const handleSaveStrategy = async () => {
+    if (!lead) return;
+    setIsSavingStrategy(true);
+    setCallMessage("");
+    try {
+      await updateStrategy({ leadId: lead._id, strategy: strategyDraft });
+      setIsEditingStrategy(false);
+      setCallMessage("Strategy updated.");
+    } catch (error) {
+      setCallMessage(error instanceof Error ? error.message : "Strategy could not be saved.");
+    } finally {
+      setIsSavingStrategy(false);
+    }
+  };
+
+  const handleDeleteLead = async () => {
+    if (!lead) return;
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setIsDeleting(true);
+    try {
+      await deleteLead({ leadId: lead._id });
+      router.push("/leads");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -100,13 +148,55 @@ function LeadDetails() {
           )}
 
           <Card className="p-6">
-            <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
-              <FileText className="size-4 text-slate-400" />
-              Call strategy
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+                <FileText className="size-4 text-slate-400" />
+                Call strategy
+              </div>
+              {lead?.strategy && !isEditingStrategy && (
+                <Button onClick={handleEditStrategy} size="sm" type="button" variant="outline">
+                  <Pencil className="size-3.5" />
+                  Edit
+                </Button>
+              )}
             </div>
-            <div className="mt-5 whitespace-pre-wrap rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-left text-sm leading-6 text-slate-600">
-              {lead?.strategy ?? "Strategy will appear after the lead is prepared."}
-            </div>
+            {isEditingStrategy ? (
+              <div className="mt-5">
+                <textarea
+                  className="min-h-80 w-full rounded-lg border border-slate-200 bg-white px-4 py-3 text-sm leading-6 text-slate-700 outline-none focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
+                  onChange={(event) => setStrategyDraft(event.target.value)}
+                  value={strategyDraft}
+                />
+                <div className="mt-3 flex justify-end gap-2">
+                  <Button
+                    onClick={() => setIsEditingStrategy(false)}
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    <X className="size-3.5" />
+                    Cancel
+                  </Button>
+                  <Button
+                    disabled={!strategyDraft.trim() || isSavingStrategy}
+                    onClick={handleSaveStrategy}
+                    size="sm"
+                    type="button"
+                  >
+                    {isSavingStrategy ? (
+                      <LoaderCircle className="size-3.5 animate-spin" />
+                    ) : (
+                      <Save className="size-3.5" />
+                    )}
+                    {isSavingStrategy ? "Saving" : "Save strategy"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="mt-5 whitespace-pre-wrap rounded-lg border border-dashed border-slate-200 bg-slate-50 px-5 py-6 text-left text-sm leading-6 text-slate-600">
+                {lead?.strategy ?? "Strategy will appear after the lead is prepared."}
+              </div>
+            )}
           </Card>
 
           <Card className="p-6">
@@ -195,6 +285,41 @@ function LeadDetails() {
               </div>
             )}
           </Card>
+
+          {lead && (
+            <Card className="border-red-100 p-5">
+              <h2 className="text-sm font-semibold text-slate-900">Lead controls</h2>
+              <p className="mt-2 text-xs leading-5 text-slate-500">
+                Delete this lead and its call data. This also releases a stuck calling slot.
+              </p>
+              <div className="mt-4 flex items-center gap-2">
+                <Button
+                  disabled={isDeleting}
+                  onClick={handleDeleteLead}
+                  size="sm"
+                  type="button"
+                  variant={confirmDelete ? "destructive" : "outline"}
+                >
+                  {isDeleting ? (
+                    <LoaderCircle className="size-3.5 animate-spin" />
+                  ) : (
+                    <Trash2 className="size-3.5" />
+                  )}
+                  {isDeleting ? "Deleting" : confirmDelete ? "Confirm delete" : "Delete lead"}
+                </Button>
+                {confirmDelete && !isDeleting && (
+                  <Button
+                    onClick={() => setConfirmDelete(false)}
+                    size="sm"
+                    type="button"
+                    variant="ghost"
+                  >
+                    Cancel
+                  </Button>
+                )}
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </div>
