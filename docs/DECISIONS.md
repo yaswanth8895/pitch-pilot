@@ -70,6 +70,15 @@ Record decisions that would otherwise be repeatedly debated. Update `AGENTS.md` 
 - Consequences: Exact Hermes and voice update formats must be confirmed before their implementation milestones. Failed external calls show an error and do not automatically retry.
 - Owner: Agency/UI developer and voice developer for the shared voice contract
 
+### 2026-07-12 — Use ElevenLabs and Wispr Flow in the voice pipeline
+
+- Status: accepted
+- Decision: Use an ElevenLabs conversational agent with its native Twilio integration for outbound calling and realtime speech. After the call, send the completed audio to the official Wispr Flow Voice Interface REST API and treat the Wispr result as the authoritative transcript.
+- Reason: Both services are required, and post-call Wispr transcription puts each on the real demo path without building custom realtime audio infrastructure.
+- Alternatives rejected: Vapi, Retell, reverse-engineered Wispr SDKs, custom Twilio Media Streams, and using Wispr only as a developer productivity tool.
+- Consequences: The voice developer requires approved Wispr Flow Developer Platform access. Demo calls must remain below the Wispr REST limit and should target 2–3 minutes. The voice Worker owns audio retrieval and conversion to base64-encoded mono 16-bit PCM WAV at 16 kHz.
+- Owner: Voice developer
+
 ### 2026-07-12 — Use npm and Node.js 20
 
 - Status: accepted
